@@ -41,10 +41,10 @@ mkdir -p "$SOUNDS_DIR"
 # Extract only the pack's subfolder
 unzip -o -j "$TMPDIR/sounds.zip" "$SUBFOLDER/*" -d "$SOUNDS_DIR" > /dev/null 2>&1
 
-# Verify we got files
-COUNT=$(ls "$SOUNDS_DIR"/*.wav 2>/dev/null | wc -l | tr -d ' ')
+# Verify we got files (support wav, mp3, ogg)
+COUNT=$({ ls "$SOUNDS_DIR"/*.wav "$SOUNDS_DIR"/*.mp3 "$SOUNDS_DIR"/*.ogg 2>/dev/null || true; } | wc -l | tr -d ' ')
 if [ "$COUNT" -eq 0 ]; then
-  echo "Error: No WAV files found after extraction"
+  echo "Error: No sound files found after extraction"
   exit 1
 fi
 

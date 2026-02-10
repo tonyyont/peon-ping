@@ -9,7 +9,7 @@ SETTINGS="$HOME/.claude/settings.json"
 REPO_BASE="https://raw.githubusercontent.com/tonyyont/peon-ping/main"
 
 # All available sound packs (add new packs here)
-PACKS="peon"
+PACKS="peon ra2_soviet_engineer"
 
 # --- Detect update vs fresh install ---
 UPDATING=false
@@ -105,7 +105,7 @@ for pack in $PACKS; do
   new_hash=$(md5 -q "$manifest" 2>/dev/null || echo "new")
   old_hash="${OLD_HASHES[$pack]:-none}"
   sound_dir="$INSTALL_DIR/packs/$pack/sounds"
-  sound_count=$(ls "$sound_dir"/*.wav 2>/dev/null | wc -l | tr -d ' ' 2>/dev/null || echo "0")
+  sound_count=$({ ls "$sound_dir"/*.wav "$sound_dir"/*.mp3 "$sound_dir"/*.ogg 2>/dev/null || true; } | wc -l | tr -d ' ')
 
   if [ "$old_hash" = "none" ] || [ "$sound_count" -eq 0 ]; then
     echo "[$pack] New pack — downloading sounds..."
@@ -200,7 +200,7 @@ except:
     print('peon')
 " 2>/dev/null)
 PACK_DIR="$INSTALL_DIR/packs/$ACTIVE_PACK"
-TEST_SOUND=$(ls "$PACK_DIR/sounds/"*.wav 2>/dev/null | head -1)
+TEST_SOUND=$({ ls "$PACK_DIR/sounds/"*.wav "$PACK_DIR/sounds/"*.mp3 "$PACK_DIR/sounds/"*.ogg 2>/dev/null || true; } | head -1)
 if [ -n "$TEST_SOUND" ]; then
   afplay -v 0.3 "$TEST_SOUND"
   echo "Sound working!"

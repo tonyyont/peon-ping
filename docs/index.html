@@ -167,40 +167,6 @@ a:hover { text-decoration: underline; }
   border-radius: 0;
 }
 
-/* --- Problem section: 3-step pain cycle --- */
-.problem-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.problem-card {
-  border: 16px solid transparent;
-  border-image-source: url('textures/card-bg.webp');
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-radius: 0;
-  padding: 24px 20px;
-}
-.problem-num {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: #ffab01;
-  opacity: 0.4;
-  margin-bottom: 12px;
-  line-height: 1;
-}
-.problem-card h3 {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #e0e8ff;
-  margin-bottom: 8px;
-}
-.problem-card p {
-  font-size: 0.85rem;
-  color: #7b818d;
-  line-height: 1.5;
-}
-
 /* --- Fix section: Before/After table --- */
 .fix-table {
   width: 100%;
@@ -356,35 +322,56 @@ a:hover { text-decoration: underline; }
 }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* --- Features strip --- */
+/* --- Features strip (accent stripe) --- */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.features-grid .feature-card:last-child {
+  grid-column: 1 / -1;
+  max-width: 50%;
+  justify-self: center;
 }
 .feature-card {
-  border: 12px solid transparent;
-  border-image-source: url('textures/card-bg.webp');
-  border-image-slice: 24 fill;
-  border-image-repeat: stretch;
-  border-radius: 0;
-  padding: 20px 12px;
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border: none;
+  border-left: 3px solid #ffab01;
+  background: rgba(255,171,1,0.03);
+  padding: 18px 20px;
+  text-align: left;
+  transition: background 0.2s;
+}
+.feature-card:hover {
+  background: rgba(255,171,1,0.06);
 }
 .feature-icon {
-  font-size: 1.4rem;
-  margin-bottom: 10px;
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,171,1,0.08);
+}
+.feature-text {
+  min-width: 0;
 }
 .feature-card h3 {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #e0e8ff;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .feature-card p {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: #7b818d;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* --- Footer --- */
@@ -403,19 +390,16 @@ footer a:hover { color: #ffab01; }
 @media (max-width: 640px) {
   section { padding: 48px 0; }
   .hero { padding: 64px 0 40px; }
-  .problem-grid { grid-template-columns: 1fr; }
-  .problem-card { border-width: 12px; }
   .fix-table { font-size: 0.8rem; }
   .fix-table td, .fix-table th { padding: 10px 12px; }
   .fix-table td:first-child { white-space: normal; }
   .fix-table-wrap { border-width: 14px; }
   .audio-grid { grid-template-columns: repeat(2, 1fr); }
   .audio-card { border-width: 12px; }
-  .features-grid { grid-template-columns: repeat(2, 1fr); }
+  .features-grid { grid-template-columns: 1fr; }
   .features-grid .feature-card:last-child {
-    grid-column: 1 / -1;
+    max-width: 100%;
   }
-  .feature-card { border-width: 10px; }
   .install-block { font-size: 0.75rem; padding: 10px 12px; border-width: 4px; }
   .atmosphere-orb { width: 600px; height: 600px; }
 }
@@ -652,31 +636,6 @@ footer a:hover { color: #ffab01; }
 </div>
 </section>
 
-<!-- ============ THE PROBLEM ============ -->
-<section id="problem">
-<div class="container">
-  <p class="section-label">The problem</p>
-  <h2 class="section-title">Sound familiar?</h2>
-  <div class="problem-grid">
-    <div class="problem-card">
-      <div class="problem-num">1</div>
-      <h3>Claude works&hellip;</h3>
-      <p>You tab to Slack, Twitter, docs. You know it'll be a few minutes.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-num">2</div>
-      <h3>Claude finishes&hellip;</h3>
-      <p>No sound. No alert. It just sits there waiting silently.</p>
-    </div>
-    <div class="problem-card">
-      <div class="problem-num">3</div>
-      <h3>You check back&hellip;</h3>
-      <p>10 minutes later. Flow state: gone. Context switch: 15-23 min to recover.</p>
-    </div>
-  </div>
-</div>
-</section>
-
 <!-- ============ AUDIO DEMO ============ -->
 <section id="sounds">
 <div class="container">
@@ -736,28 +695,38 @@ footer a:hover { color: #ffab01; }
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-icon">&#x1f50a;</div>
-      <h3>Volume control</h3>
-      <p>0.0 &ndash; 1.0 in config. Quiet enough for the office.</p>
+      <div class="feature-text">
+        <h3>Volume control</h3>
+        <p>0.0 &ndash; 1.0 in config. Quiet enough for the office.</p>
+      </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#x1f500;</div>
-      <h3>No repeats</h3>
-      <p>Tracks last played per category. Never the same line twice in a row.</p>
+      <div class="feature-text">
+        <h3>No repeats</h3>
+        <p>Tracks last played per category. Never the same line twice in a row.</p>
+      </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#x1f39b;</div>
-      <h3>Category toggles</h3>
-      <p>Enable or disable greeting, acknowledge, complete, error, annoyed individually.</p>
+      <div class="feature-text">
+        <h3>Category toggles</h3>
+        <p>Enable or disable greeting, acknowledge, complete, error, annoyed individually.</p>
+      </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#x1f4cb;</div>
-      <h3>Tab titles</h3>
-      <p>Terminal tab shows project name and status. Dot indicator when done.</p>
+      <div class="feature-text">
+        <h3>Tab titles</h3>
+        <p>Terminal tab shows project name and status. Dot indicator when done.</p>
+      </div>
     </div>
     <div class="feature-card">
       <div class="feature-icon">&#x1f4e6;</div>
-      <h3>Pack system</h3>
-      <p>Swappable character packs. Peasant, Wisp, Acolyte &mdash; coming soon.</p>
+      <div class="feature-text">
+        <h3>Pack system</h3>
+        <p>Swappable character packs. Peasant, Wisp, Acolyte &mdash; coming soon.</p>
+      </div>
     </div>
   </div>
 </div>

@@ -31,23 +31,6 @@ for cat in ['greeting','acknowledge','complete','error','permission','resource_l
 
 [ "$ENABLED" = "false" ] && exit 0
 
-# --- Resolve TTY for this session ---
-resolve_tty() {
-  local pid=$$
-  while [ "$pid" -gt 1 ] 2>/dev/null; do
-    local tty_info
-    tty_info=$(ps -o tty= -p "$pid" 2>/dev/null | tr -d ' ')
-    if [ -n "$tty_info" ] && [ "$tty_info" != "??" ]; then
-      echo "$tty_info"
-      return 0
-    fi
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')
-  done
-  return 1
-}
-
-MY_TTY=$(resolve_tty)
-
 # --- Parse event fields (shlex.quote prevents shell injection) ---
 eval "$(/usr/bin/python3 -c "
 import sys, json, shlex
@@ -218,29 +201,9 @@ CAT_ENABLED="${!CAT_VAR:-true}"
 # --- Build tab title ---
 TITLE="${MARKER}${PROJECT}: ${STATUS}"
 
-# --- Set tab title via TTY-matched AppleScript ---
-if [ -n "$MY_TTY" ] && [ -n "$TITLE" ]; then
-  # Use AppleScript variable to avoid injection
-  osascript - "$TITLE" "$MY_TTY" <<'APPLESCRIPT' &
-on run argv
-  set theTitle to item 1 of argv
-  set theTTY to "/dev/" & item 2 of argv
-  tell application "Terminal"
-    repeat with w in windows
-      repeat with t in tabs of w
-        if tty of t is theTTY then
-          set custom title of t to theTitle
-          set title displays custom title of t to true
-          set title displays device name of t to false
-          set title displays shell path of t to false
-          set title displays window size of t to false
-          set title displays file name of t to false
-        end if
-      end repeat
-    end repeat
-  end tell
-end run
-APPLESCRIPT
+# --- Set tab title via ANSI escape (works in Warp, iTerm2, Terminal.app, etc.) ---
+if [ -n "$TITLE" ]; then
+  printf '\033]0;%s\007' "$TITLE"
 fi
 
 # --- Play sound ---
@@ -251,17 +214,19 @@ if [ -n "$CATEGORY" ]; then
   fi
 fi
 
-# --- Smart notification: only when Terminal is NOT frontmost ---
+# --- Smart notification: only when terminal is NOT frontmost ---
 if [ -n "$NOTIFY" ]; then
   FRONTMOST=$(osascript -e 'tell application "System Events" to get name of first process whose frontmost is true' 2>/dev/null)
-  if [ "$FRONTMOST" != "Terminal" ]; then
-    # Use AppleScript argv to avoid injection
-    osascript - "$MSG" "$TITLE" <<'APPLESCRIPT' &
+  case "$FRONTMOST" in
+    Terminal|iTerm2|Warp|Alacritty|kitty|WezTerm|Ghostty) ;; # terminal is focused, skip notification
+    *)
+      osascript - "$MSG" "$TITLE" <<'APPLESCRIPT' &
 on run argv
   display notification (item 1 of argv) with title (item 2 of argv)
 end run
 APPLESCRIPT
-  fi
+      ;;
+  esac
 fi
 
 wait

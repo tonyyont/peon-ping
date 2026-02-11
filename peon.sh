@@ -468,6 +468,17 @@ case "$EVENT" in
       exit 0
     fi
     ;;
+  PermissionRequest)
+    # Fires in IDE (VSCode) when a permission dialog appears.
+    # Notification with permission_prompt only fires in CLI, so this
+    # ensures IDE users also hear the permission sound.
+    CATEGORY="permission"
+    STATUS="needs approval"
+    MARKER="● "
+    NOTIFY=1
+    NOTIFY_COLOR="red"
+    MSG="$PROJECT  —  Permission needed"
+    ;;
   # PostToolUseFailure — no sound. Claude retries on its own.
   *)
     exit 0

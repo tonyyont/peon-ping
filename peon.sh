@@ -357,6 +357,7 @@ check_annoyed() {
 import json, time, sys, os
 
 state_file = '$STATE'
+session_id = '$SESSION_ID'
 now = time.time()
 window = float('$ANNOYED_WINDOW')
 threshold = int('$ANNOYED_THRESHOLD')
@@ -366,11 +367,15 @@ try:
 except:
     state = {}
 
-timestamps = state.get('prompt_timestamps', [])
+all_timestamps = state.get('prompt_timestamps', {})
+if isinstance(all_timestamps, list):
+    all_timestamps = {}
+timestamps = all_timestamps.get(session_id, [])
 timestamps = [t for t in timestamps if now - t < window]
 timestamps.append(now)
 
-state['prompt_timestamps'] = timestamps
+all_timestamps[session_id] = timestamps
+state['prompt_timestamps'] = all_timestamps
 os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
 json.dump(state, open(state_file, 'w'))
 

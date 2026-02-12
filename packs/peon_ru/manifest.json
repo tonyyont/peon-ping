@@ -1,0 +1,61 @@
+{
+  "name": "peon_ru",
+  "display_name": "Peon Orc (RU)",
+  "categories": {
+    "greeting": {
+      "sounds": [
+        { "file": "PeonReady1.wav", "line": "Готов вкалывать" },
+        { "file": "PeonYes1.wav", "line": "Чё надо, хозяин?" },
+        { "file": "PeonWhat3.wav", "line": "Да?" }
+      ]
+    },
+    "acknowledge": {
+      "sounds": [
+        { "file": "PeonWhat1.wav", "line": "Почему бы нет?" },
+        { "file": "PeonYes2.wav", "line": "Сделаю" },
+        { "file": "PeonYes3.wav", "line": "С удовольствием" },
+        { "file": "PeonYes4.wav", "line": "Да-да" },
+        { "file": "PeonYesAttack1.wav", "line": "Хорошо" },
+        { "file": "PeonYesAttack2.wav", "line": "Угу" },
+        { "file": "PeonYesAttack3.wav", "line": "Бей их" }
+      ]
+    },
+    "complete": {
+      "sounds": [
+        { "file": "PeonReady1.wav", "line": "Готов вкалывать" },
+        { "file": "PeonWhat4.wav", "line": "Чего хочешь?" },
+        { "file": "PeonWhat1.wav", "line": "Почему бы нет?" },
+        { "file": "PeonYes2.wav", "line": "Сделаю" },
+        { "file": "PeonYes3.wav", "line": "С удовольствием" },
+        { "file": "PeonYesAttack1.wav", "line": "Хорошо" },
+        { "file": "PeonYesAttack3.wav", "line": "Бей их" }
+      ]
+    },
+    "error": {
+      "sounds": [
+        { "file": "PeonWarcry1.wav", "line": "Ты меня с кем-то путаешь!" },
+        { "file": "PeonPissed4.wav", "line": "Нет времени!" }
+      ]
+    },
+    "permission": {
+      "sounds": [
+        { "file": "PeonWhat4.wav", "line": "Чего хочешь?" },
+        { "file": "PeonWhat2.wav", "line": "Угу" },
+        { "file": "PeonYes1.wav", "line": "Чё надо, хозяин?" },
+        { "file": "PeonWhat3.wav", "line": "Да?" }
+      ]
+    },
+    "resource_limit": {
+      "sounds": [
+        { "file": "PeonPissed4.wav", "line": "Нет времени!" }
+      ]
+    },
+    "annoyed": {
+      "sounds": [
+        { "file": "PeonPissed1.wav", "line": "Попробуем" },
+        { "file": "PeonPissed3.wav", "line": "Не мешай, я занят!" },
+        { "file": "PeonPissed2.wav", "line": "Чего?!" }
+      ]
+    }
+  }
+}

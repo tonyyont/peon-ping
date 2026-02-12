@@ -104,6 +104,7 @@ The config lives at `$CLAUDE_CONFIG_DIR/hooks/peon-ping/config.json` (default: `
 | `ra_soviet` | Soviet Soldier (Red Alert) | "Awaiting orders.", "Acknowledged.", "Comrade?" | [@JairusKhan](https://github.com/JairusKhan) |
 | `peon_ru` | Orc Peon (Warcraft III, Russian) | "Готов вкалывать!", "Работа, работа.", "Оки-доки." | [@maksimfedin](https://github.com/maksimfedin) |
 | `peasant_ru` | Human Peasant (Warcraft III, Russian) | "Да, господин?", "Готово.", "Ну, я пошёл!" | [@maksimfedin](https://github.com/maksimfedin) |
+| `acolyte_de` | Undead Acolyte (Warcraft III, German) | "Mein Leben für Ner'Zhul!", "Ja, Meister.", "Die Verdammten stehen bereit." | [@Kaffeetasse](https://github.com/Kaffeetasse) |
 | `acolyte_ru` | Undead Acolyte (Warcraft III, Russian) | "Моя жизнь за Нер'зула!", "Да, повелитель.", "Тени служат мне." | [@maksimfedin](https://github.com/maksimfedin) |
 | `tf2_engineer` | Engineer (Team Fortress 2) | "Sentry going up.", "Nice work!", "Cowboy up!" | [@Arie](https://github.com/Arie) |
 | `rick` | Rick Sanchez (Rick and Morty) | "Wubba lubba dub dub!", "I'm pickle Rick!", "Get schwifty!" | [@ranjitp16](https://github.com/ranjitp16) |

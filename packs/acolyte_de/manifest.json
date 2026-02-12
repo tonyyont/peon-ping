@@ -1,0 +1,65 @@
+{
+  "name": "acolyte_de",
+  "display_name": "Undead Acolyte (German)",
+  "categories": {
+    "greeting": {
+      "sounds": [
+        { "file": "AcolyteReady1.wav", "line": "Die Verdammten stehen bereit." },
+        { "file": "AcolyteWhat1.wav", "line": "Mein Leben für Ner'Zhul!" },
+        { "file": "AcolyteWhat3.wav", "line": "Euer Befehl, Meister?" }
+      ]
+    },
+    "acknowledge": {
+      "sounds": [
+        { "file": "AcolyteYes1.wav", "line": "Ich gehorche mit Freuden." },
+        { "file": "AcolyteYes2.wav", "line": "Ja, Meister." },
+        { "file": "AcolyteYes3.wav", "line": "Mein Schicksal ist besiegelt." },
+        { "file": "AcolyteYes4.wav", "line": "Euer Wille geschehe." },
+        { "file": "AcolyteYesAttack1.wav", "line": "Der Tod soll herrschen!" },
+        { "file": "AcolyteYesAttack2.wav", "line": "Fürchtet den Sensenmann!" },
+        { "file": "AcolyteYesAttack3.wav", "line": "Das Leben erlösche!" }
+      ]
+    },
+    "complete": {
+      "sounds": [
+        { "file": "AcolyteBuildingComplete1.wav", "line": "Die Beschwörung ist abgeschlossen." },
+        { "file": "NecromancerResearchComplete1.wav", "line": "Forschung abgeschlossen." },
+        { "file": "AcolyteReady1.wav", "line": "Die Verdammten stehen bereit." },
+        { "file": "AcolyteYes1.wav", "line": "Ich gehorche mit Freuden." },
+        { "file": "AcolyteYes2.wav", "line": "Ja, Meister." },
+        { "file": "AcolyteWhat5.wav", "line": "Ich beuge mich eurem Willen." },
+        { "file": "AcolyteWhat4.wav", "line": "Wo soll mein Blut vergossen werden?" }
+      ]
+    },
+    "error": {
+      "sounds": [
+        { "file": "AcolyteDeath1.wav", "line": "Uah." },
+        { "file": "AcolytePissed4.wav", "line": "Lasst Blut die Schwachen ertränken!" }
+      ]
+    },
+    "permission": {
+      "sounds": [
+        { "file": "AcolyteWhat1.wav", "line": "Mein Leben für Ner'Zhul!" },
+        { "file": "AcolyteWhat2.wav", "line": "Ich wünsche nur zu dienen." },
+        { "file": "AcolyteWhat3.wav", "line": "Euer Befehl, Meister?" },
+        { "file": "AcolyteWhat4.wav", "line": "Wo soll mein Blut vergossen werden?" },
+        { "file": "AcolyteWhat5.wav", "line": "Ich beuge mich eurem Willen." }
+      ]
+    },
+    "resource_limit": {
+      "sounds": [
+        { "file": "NecromancerNoFood1.wav", "line": "Errichtet mehr Ziggurats!" },
+        { "file": "NecromancerNoGold1.wav", "line": "Es ist mehr Gold erforderlich!" }
+      ]
+    },
+    "annoyed": {
+      "sounds": [
+        { "file": "AcolytePissed1.wav", "line": "Dies ist die Stunde der Geißel." },
+        { "file": "AcolytePissed2.wav", "line": "Tod soll die Welt säubern." },
+        { "file": "AcolytePissed3.wav", "line": "Ich sehe nur Schwärze... oh, ich habe die Kapuze unten." },
+        { "file": "AcolytePissed7.wav", "line": "Möchtet Ihr das Geheimnis ewigen Glücks wissen? Seite 246." },
+        { "file": "AcolytePissed8.wav", "line": "Beschreitet Ihr erst den dunklen Weg, wird er für immer Euer Schicksal bestimmen... und Ihr seid pflegeversichert." }
+      ]
+    }
+  }
+}

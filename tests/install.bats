@@ -16,6 +16,7 @@ setup() {
   cp "$(dirname "$BATS_TEST_FILENAME")/../config.json" "$CLONE_DIR/"
   cp "$(dirname "$BATS_TEST_FILENAME")/../VERSION" "$CLONE_DIR/"
   cp "$(dirname "$BATS_TEST_FILENAME")/../completions.bash" "$CLONE_DIR/"
+  cp "$(dirname "$BATS_TEST_FILENAME")/../completions.fish" "$CLONE_DIR/"
   cp "$(dirname "$BATS_TEST_FILENAME")/../uninstall.sh" "$CLONE_DIR/" 2>/dev/null || touch "$CLONE_DIR/uninstall.sh"
   cp -r "$(dirname "$BATS_TEST_FILENAME")/../packs" "$CLONE_DIR/"
 
@@ -97,4 +98,9 @@ print('OK')
   touch "$TEST_HOME/.zshrc"
   bash "$CLONE_DIR/install.sh"
   grep -qF 'peon-ping/completions.bash' "$TEST_HOME/.zshrc"
+}
+
+@test "fresh install copies completions.fish" {
+  bash "$CLONE_DIR/install.sh"
+  [ -f "$INSTALL_DIR/completions.fish" ]
 }

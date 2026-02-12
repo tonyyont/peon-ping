@@ -92,6 +92,7 @@ if [ -n "$SCRIPT_DIR" ]; then
   cp -r "$SCRIPT_DIR/packs/"* "$INSTALL_DIR/packs/"
   cp "$SCRIPT_DIR/peon.sh" "$INSTALL_DIR/"
   cp "$SCRIPT_DIR/completions.bash" "$INSTALL_DIR/"
+  cp "$SCRIPT_DIR/completions.fish" "$INSTALL_DIR/"
   cp "$SCRIPT_DIR/VERSION" "$INSTALL_DIR/"
   cp "$SCRIPT_DIR/uninstall.sh" "$INSTALL_DIR/"
   if [ "$UPDATING" = false ]; then
@@ -102,6 +103,7 @@ else
   echo "Downloading from GitHub..."
   curl -fsSL "$REPO_BASE/peon.sh" -o "$INSTALL_DIR/peon.sh"
   curl -fsSL "$REPO_BASE/completions.bash" -o "$INSTALL_DIR/completions.bash"
+  curl -fsSL "$REPO_BASE/completions.fish" -o "$INSTALL_DIR/completions.fish"
   curl -fsSL "$REPO_BASE/VERSION" -o "$INSTALL_DIR/VERSION"
   curl -fsSL "$REPO_BASE/uninstall.sh" -o "$INSTALL_DIR/uninstall.sh"
   for pack in $PACKS; do
@@ -162,6 +164,24 @@ for rcfile in "$HOME/.zshrc" "$HOME/.bashrc"; do
     echo "Added tab completion to $(basename "$rcfile")"
   fi
 done
+
+# --- Add fish shell function + completions ---
+FISH_CONFIG="$HOME/.config/fish/config.fish"
+if [ -f "$FISH_CONFIG" ]; then
+  FISH_FUNC='function peon; bash ~/.claude/hooks/peon-ping/peon.sh $argv; end'
+  if ! grep -qF 'function peon' "$FISH_CONFIG"; then
+    echo "" >> "$FISH_CONFIG"
+    echo "# peon-ping quick controls" >> "$FISH_CONFIG"
+    echo "$FISH_FUNC" >> "$FISH_CONFIG"
+    echo "Added peon function to config.fish"
+  fi
+fi
+FISH_COMPLETIONS_DIR="$HOME/.config/fish/completions"
+if [ -d "$HOME/.config/fish" ]; then
+  mkdir -p "$FISH_COMPLETIONS_DIR"
+  cp "$INSTALL_DIR/completions.fish" "$FISH_COMPLETIONS_DIR/peon.fish"
+  echo "Installed fish completions to $FISH_COMPLETIONS_DIR/peon.fish"
+fi
 
 # --- Verify sounds are installed ---
 echo ""

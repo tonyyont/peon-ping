@@ -299,18 +299,20 @@ fi
 if [ "$LOCAL_MODE" = false ]; then
   ALIAS_LINE="alias peon=\"bash $INSTALL_DIR/peon.sh\""
   for rcfile in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    if [ -f "$rcfile" ] && ! grep -qF 'alias peon=' "$rcfile"; then
+    if [ -f "$rcfile" ] && [ -w "$rcfile" ] && ! grep -qF 'alias peon=' "$rcfile"; then
       echo "" >> "$rcfile"
       echo "# peon-ping quick controls" >> "$rcfile"
       echo "$ALIAS_LINE" >> "$rcfile"
       echo "Added peon alias to $(basename "$rcfile")"
+    elif [ -f "$rcfile" ] && [ ! -w "$rcfile" ]; then
+      echo "Warning: $(basename "$rcfile") is not writable, skipping alias" >&2
     fi
   done
 
   # --- Add tab completion ---
   COMPLETION_LINE="[ -f $INSTALL_DIR/completions.bash ] && source $INSTALL_DIR/completions.bash"
   for rcfile in "$HOME/.zshrc" "$HOME/.bashrc"; do
-    if [ -f "$rcfile" ] && ! grep -qF 'peon-ping/completions.bash' "$rcfile"; then
+    if [ -f "$rcfile" ] && [ -w "$rcfile" ] && ! grep -qF 'peon-ping/completions.bash' "$rcfile"; then
       echo "$COMPLETION_LINE" >> "$rcfile"
       echo "Added tab completion to $(basename "$rcfile")"
     fi
@@ -319,7 +321,7 @@ fi
 
 # --- Add fish shell function + completions ---
 FISH_CONFIG="$HOME/.config/fish/config.fish"
-if [ -f "$FISH_CONFIG" ]; then
+if [ -f "$FISH_CONFIG" ] && [ -w "$FISH_CONFIG" ]; then
   FISH_FUNC="function peon; bash $INSTALL_DIR/peon.sh \$argv; end"
   if ! grep -qF 'function peon' "$FISH_CONFIG"; then
     echo "" >> "$FISH_CONFIG"
@@ -327,6 +329,8 @@ if [ -f "$FISH_CONFIG" ]; then
     echo "$FISH_FUNC" >> "$FISH_CONFIG"
     echo "Added peon function to config.fish"
   fi
+elif [ -f "$FISH_CONFIG" ] && [ ! -w "$FISH_CONFIG" ]; then
+  echo "Warning: config.fish is not writable, skipping fish function" >&2
 fi
 FISH_COMPLETIONS_DIR="$HOME/.config/fish/completions"
 if [ -d "$HOME/.config/fish" ]; then

@@ -131,6 +131,73 @@ terminal_is_focused() {
   esac
 }
 
+# --- Platform-aware headphone detection (result cached per invocation) ---
+_HEADPHONES_CHECKED=""
+_HEADPHONES_RESULT=1
+
+headphones_connected() {
+  # Return cached result if already checked this invocation
+  if [ -n "$_HEADPHONES_CHECKED" ]; then
+    return "$_HEADPHONES_RESULT"
+  fi
+  _HEADPHONES_CHECKED=1
+
+  case "$PLATFORM" in
+    mac)
+      local audio_data
+      audio_data=$(system_profiler SPAudioDataType 2>/dev/null) || { _HEADPHONES_RESULT=1; return 1; }
+      echo "$audio_data" | python3 -c "
+import sys
+data = sys.stdin.read()
+lines = data.strip().split('\n')
+# Find the default output device and check its output source
+in_default = False
+device_name = ''
+for line in lines:
+    stripped = line.strip()
+    # Track device names (section headers end with ':' but have no value after it)
+    if stripped.endswith(':') and ': ' not in stripped:
+        device_name = stripped[:-1]
+    if 'Default Output Device: Yes' in stripped:
+        in_default = True
+        # If device name is not Built-in Output, it's external (Bluetooth/USB)
+        if device_name and 'Built-in' not in device_name:
+            sys.exit(0)
+        continue
+    if in_default and stripped.startswith('Output Source:'):
+        source = stripped.split(':', 1)[1].strip()
+        if source.lower() == 'internal speakers':
+            sys.exit(1)
+        else:
+            sys.exit(0)
+sys.exit(1)
+" 2>/dev/null
+      _HEADPHONES_RESULT=$?
+      return "$_HEADPHONES_RESULT"
+      ;;
+    wsl)
+      powershell.exe -NoProfile -NonInteractive -Command "
+        try {
+          \$devices = Get-CimInstance Win32_PnPEntity -Filter \"PNPClass='AudioEndpoint'\" -ErrorAction Stop |
+            Where-Object { \$_.Present -eq \$true -and \$_.Status -eq 'OK' }
+          foreach (\$d in \$devices) {
+            if (\$d.Name -imatch 'headphone|earphone|airpod|buds|headset|beats') {
+              exit 0
+            }
+          }
+          exit 1
+        } catch { exit 1 }
+      " &>/dev/null
+      _HEADPHONES_RESULT=$?
+      return "$_HEADPHONES_RESULT"
+      ;;
+    *)
+      _HEADPHONES_RESULT=1
+      return 1
+      ;;
+  esac
+}
+
 # --- CLI subcommands (must come before INPUT=$(cat) which blocks on stdin) ---
 PAUSED_FILE="$PEON_DIR/.paused"
 case "${1:-}" in
@@ -232,6 +299,9 @@ Commands:
   --pack <name>  Switch to a specific pack
   --pack         Cycle to the next pack
   --help         Show this help
+
+Config: ~/.claude/hooks/peon-ping/config.json
+  headphones_only: true/false — only play sounds when headphones are detected
 HELPEOF
     exit 0 ;;
   --*)
@@ -274,6 +344,7 @@ if str(cfg.get('enabled', True)).lower() == 'false':
 volume = cfg.get('volume', 0.5)
 active_pack = cfg.get('active_pack', 'peon')
 pack_rotation = cfg.get('pack_rotation', [])
+headphones_only = str(cfg.get('headphones_only', False)).lower() == 'true'
 annoyed_threshold = int(cfg.get('annoyed_threshold', 3))
 annoyed_window = float(cfg.get('annoyed_window_seconds', 10))
 cats = cfg.get('categories', {})
@@ -426,6 +497,7 @@ print('NOTIFY=' + q(notify))
 print('NOTIFY_COLOR=' + q(notify_color))
 print('MSG=' + q(msg))
 print('SOUND_FILE=' + q(sound_file))
+print('HEADPHONES_ONLY=' + q('true' if headphones_only else 'false'))
 " <<< "$INPUT" 2>/dev/null)"
 
 # If Python signalled early exit (disabled, agent, unknown event), bail out
@@ -471,6 +543,13 @@ if [ "$EVENT" = "SessionStart" ] && [ "$PAUSED" = "true" ]; then
   echo "peon-ping: sounds paused — run 'peon --resume' or '/peon-ping-toggle' to unpause" >&2
 fi
 
+# --- Show headphones_only status on SessionStart ---
+if [ "$EVENT" = "SessionStart" ] && [ "$HEADPHONES_ONLY" = "true" ] && [ "$PAUSED" != "true" ]; then
+  if ! headphones_connected; then
+    echo "peon-ping: headphones_only mode — sounds suppressed (no headphones detected)" >&2
+  fi
+fi
+
 # --- Build tab title ---
 TITLE="${MARKER}${PROJECT}: ${STATUS}"
 
@@ -479,9 +558,13 @@ if [ -n "$TITLE" ]; then
   printf '\033]0;%s\007' "$TITLE"
 fi
 
-# --- Play sound ---
+# --- Play sound (skip if headphones_only is set and no headphones detected) ---
 if [ -n "$SOUND_FILE" ] && [ -f "$SOUND_FILE" ]; then
-  play_sound "$SOUND_FILE" "$VOLUME"
+  if [ "$HEADPHONES_ONLY" = "true" ] && ! headphones_connected; then
+    :  # Suppress sound — no headphones detected
+  else
+    play_sound "$SOUND_FILE" "$VOLUME"
+  fi
 fi
 
 # --- Smart notification: only when terminal is NOT frontmost ---

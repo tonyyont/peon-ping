@@ -475,6 +475,146 @@ JSON
   [[ "$sound2" == *"/packs/sc_kerrigan/sounds/"* ]]
 }
 
+# ============================================================
+# Headphones-only mode
+# ============================================================
+
+@test "headphones_only=false plays sound normally (default)" {
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+}
+
+@test "headphones_only=true suppresses sound when no headphones" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  # Default mock system_profiler returns Internal Speakers (no headphones)
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  ! afplay_was_called
+}
+
+@test "headphones_only=true plays sound when wired headphones connected" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  # Mock system_profiler to report headphones
+  cat > "$TEST_DIR/.mock_audio_data" <<'EOF'
+Audio:
+
+    Devices:
+
+        Built-in Output:
+
+          Default Output Device: Yes
+          Output Source: Headphones
+EOF
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+}
+
+@test "headphones_only=true plays sound when Bluetooth device is default" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  # Mock system_profiler to report Bluetooth output as default
+  cat > "$TEST_DIR/.mock_audio_data" <<'EOF'
+Audio:
+
+    Devices:
+
+        Built-in Output:
+
+          Default Output Device: No
+          Output Source: Internal Speakers
+
+        AirPods Pro:
+
+          Default Output Device: Yes
+EOF
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+}
+
+@test "headphones_only=true shows stderr notice on SessionStart without headphones" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [[ "$PEON_STDERR" == *"headphones_only"* ]]
+  [[ "$PEON_STDERR" == *"no headphones detected"* ]]
+}
+
+@test "headphones_only=true no stderr notice when headphones connected" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  cat > "$TEST_DIR/.mock_audio_data" <<'EOF'
+Audio:
+
+    Devices:
+
+        Built-in Output:
+
+          Default Output Device: Yes
+          Output Source: Headphones
+EOF
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [[ "$PEON_STDERR" != *"no headphones detected"* ]]
+}
+
+@test "headphones_only=true suppresses sound on Stop too" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  ! afplay_was_called
+}
+
+@test "headphones_only does not suppress desktop notifications" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "headphones_only": true
+}
+JSON
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  # Sound should be suppressed
+  ! afplay_was_called
+  # But osascript (notification) should still fire (since terminal is not focused in mock)
+  [ -f "$TEST_DIR/osascript.log" ] && [ -s "$TEST_DIR/osascript.log" ]
+}
+
 @test "empty pack_rotation falls back to active_pack" {
   cat > "$TEST_DIR/config.json" <<'JSON'
 {

@@ -60,6 +60,7 @@ Edit `~/.claude/hooks/peon-ping/config.json`:
 ```json
 {
   "volume": 0.5,
+  "headphones_only": false,
   "categories": {
     "greeting": true,
     "acknowledge": true,
@@ -75,6 +76,7 @@ Edit `~/.claude/hooks/peon-ping/config.json`:
 - **categories**: Toggle individual sound types on/off
 - **annoyed_threshold / annoyed_window_seconds**: How many prompts in N seconds triggers the easter egg
 - **pack_rotation**: Array of pack names (e.g. `["peon", "sc_kerrigan", "peasant"]`). Each Claude Code session randomly gets one pack from the list and keeps it for the whole session. Leave empty `[]` to use `active_pack` instead.
+- **headphones_only**: When `true`, sounds only play when headphones are detected. Desktop notifications and tab titles still work normally. On macOS, detects wired headphones and Bluetooth audio devices (AirPods, etc.). On WSL, detects headphone/headset audio endpoints. Default: `false`.
 
 ## Sound packs
 

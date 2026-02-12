@@ -141,6 +141,27 @@ fi
 SCRIPT
   chmod +x "$MOCK_BIN/curl"
 
+  # Mock system_profiler — return configurable audio device info
+  cat > "$MOCK_BIN/system_profiler" <<'SCRIPT'
+#!/bin/bash
+if [ "$1" = "SPAudioDataType" ] && [ -f "${CLAUDE_PEON_DIR}/.mock_audio_data" ]; then
+  cat "${CLAUDE_PEON_DIR}/.mock_audio_data"
+else
+  # Default: internal speakers (no headphones)
+  cat <<'EOF'
+Audio:
+
+    Devices:
+
+        Built-in Output:
+
+          Default Output Device: Yes
+          Output Source: Internal Speakers
+EOF
+fi
+SCRIPT
+  chmod +x "$MOCK_BIN/system_profiler"
+
   export PATH="$MOCK_BIN:$PATH"
 
   # Locate peon.sh (relative to this test file)

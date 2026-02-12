@@ -45,6 +45,16 @@ play_sound() {
         \$p.Close()
       " &>/dev/null &
       ;;
+    linux)
+      if command -v paplay &>/dev/null; then
+        # paplay volume: 0-65536 (65536 = 100%), our vol is 0.0-1.0
+        local pavol
+        pavol=$(python3 -c "print(int($vol * 65536))")
+        nohup paplay --volume="$pavol" "$file" >/dev/null 2>&1 &
+      elif command -v aplay &>/dev/null; then
+        nohup aplay -q "$file" >/dev/null 2>&1 &
+      fi
+      ;;
   esac
 }
 
@@ -107,6 +117,17 @@ APPLESCRIPT
         rm -rf "$slot_dir/slot-$slot"
       ) &
       ;;
+    linux)
+      local urgency="normal"
+      case "$color" in
+        red)    urgency="critical" ;;
+        yellow) urgency="normal" ;;
+        blue)   urgency="low" ;;
+      esac
+      if command -v notify-send &>/dev/null; then
+        nohup notify-send -u "$urgency" "$title" "$msg" >/dev/null 2>&1 &
+      fi
+      ;;
   esac
 }
 
@@ -123,6 +144,19 @@ terminal_is_focused() {
       ;;
     wsl)
       # Checking Windows focus from WSL adds too much latency; always notify
+      return 1
+      ;;
+    linux)
+      # X11: check active window name via xdotool
+      if command -v xdotool &>/dev/null; then
+        local active_window
+        active_window=$(xdotool getactivewindow getwindowname 2>/dev/null || echo "")
+        case "$active_window" in
+          *Terminal*|*Alacritty*|*kitty*|*WezTerm*|*Ghostty*|*xterm*|*rxvt*|*Warp*|*foot*|st|st-*) return 0 ;;
+          *) return 1 ;;
+        esac
+      fi
+      # Wayland or no xdotool — always notify (same as WSL)
       return 1
       ;;
     *)

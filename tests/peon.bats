@@ -17,57 +17,57 @@ teardown() {
 @test "SessionStart plays a greeting sound" {
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   [[ "$sound" == *"/packs/peon/sounds/Hello"* ]]
 }
 
 @test "Notification permission_prompt plays a permission sound" {
   run_peon '{"hook_event_name":"Notification","notification_type":"permission_prompt","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   [[ "$sound" == *"/packs/peon/sounds/Perm"* ]]
 }
 
 @test "PermissionRequest plays a permission sound (IDE support)" {
   run_peon '{"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"rm -rf /"},"cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   [[ "$sound" == *"/packs/peon/sounds/Perm"* ]]
 }
 
 @test "Notification idle_prompt does NOT play sound (Stop handles it)" {
   run_peon '{"hook_event_name":"Notification","notification_type":"idle_prompt","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "Stop plays a complete sound" {
   run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   [[ "$sound" == *"/packs/peon/sounds/Done"* ]]
 }
 
 @test "UserPromptSubmit does NOT play sound normally" {
   run_peon '{"hook_event_name":"UserPromptSubmit","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "Unknown event exits cleanly with no sound" {
   run_peon '{"hook_event_name":"SomeOtherEvent","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "Notification with unknown type exits cleanly" {
   run_peon '{"hook_event_name":"Notification","notification_type":"something_else","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 # ============================================================
@@ -80,7 +80,7 @@ teardown() {
 JSON
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "category disabled skips sound but still exits 0" {
@@ -92,7 +92,7 @@ JSON
 JSON
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 # ============================================================
@@ -103,7 +103,7 @@ JSON
   rm -f "$TEST_DIR/config.json"
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
+  sound_was_played
 }
 
 # ============================================================
@@ -113,29 +113,29 @@ JSON
 @test "acceptEdits is interactive, NOT suppressed" {
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"acceptEdits"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
+  sound_was_played
 }
 
 @test "delegate mode suppresses sound (agent session)" {
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"agent1","permission_mode":"delegate"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "agent session is remembered across events" {
   # First event marks it as agent
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"agent2","permission_mode":"delegate"}'
-  ! afplay_was_called
+  ! sound_was_played
 
   # Second event from same session_id (even with empty perm_mode) is still suppressed
   run_peon '{"hook_event_name":"Notification","notification_type":"idle_prompt","cwd":"/tmp/myproject","session_id":"agent2","permission_mode":""}'
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "default permission_mode is NOT treated as agent" {
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
+  sound_was_played
 }
 
 # ============================================================
@@ -147,7 +147,7 @@ JSON
   sounds=()
   for i in $(seq 1 10); do
     run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
-    sounds+=("$(afplay_sound)")
+    sounds+=("$(played_sound)")
   done
 
   # Check that consecutive sounds differ (greeting has 2 options: Hello1 and Hello2)
@@ -172,8 +172,8 @@ JSON
     run_peon '{"hook_event_name":"UserPromptSubmit","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   done
   # The 3rd should trigger annoyed (threshold=3)
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   [[ "$sound" == *"Angry1.wav" ]]
 }
 
@@ -186,7 +186,7 @@ JSON
   for i in $(seq 1 3); do
     run_peon '{"hook_event_name":"UserPromptSubmit","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   done
-  afplay_was_called
+  sound_was_played
 }
 
 @test "annoyed does NOT trigger below threshold" {
@@ -194,7 +194,7 @@ JSON
   for i in $(seq 1 2); do
     run_peon '{"hook_event_name":"UserPromptSubmit","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   done
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "annoyed disabled in config suppresses easter egg" {
@@ -208,7 +208,7 @@ JSON
   for i in $(seq 1 5); do
     run_peon '{"hook_event_name":"UserPromptSubmit","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   done
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 # ============================================================
@@ -255,14 +255,20 @@ JSON
 # Volume passthrough
 # ============================================================
 
-@test "volume from config is passed to afplay" {
+@test "volume from config is passed to audio player" {
   cat > "$TEST_DIR/config.json" <<'JSON'
 { "active_pack": "peon", "volume": 0.3, "enabled": true, "categories": {} }
 JSON
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/p","session_id":"s1","permission_mode":"default"}'
-  afplay_was_called
-  log_line=$(tail -1 "$TEST_DIR/afplay.log")
-  [[ "$log_line" == *"-v 0.3"* ]]
+  sound_was_played
+  if afplay_was_called 2>/dev/null; then
+    log_line=$(tail -1 "$TEST_DIR/afplay.log")
+    [[ "$log_line" == *"-v 0.3"* ]]
+  elif paplay_was_called 2>/dev/null; then
+    log_line=$(tail -1 "$TEST_DIR/paplay.log")
+    # 0.3 * 65536 = 19660
+    [[ "$log_line" == *"--volume=19660"* ]]
+  fi
 }
 
 # ============================================================
@@ -317,7 +323,7 @@ JSON
   touch "$TEST_DIR/.paused"
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 @test "paused SessionStart shows stderr status line" {
@@ -330,7 +336,7 @@ JSON
   touch "$TEST_DIR/.paused"
   run_peon '{"hook_event_name":"Notification","notification_type":"permission_prompt","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  ! afplay_was_called
+  ! sound_was_played
 }
 
 # ============================================================
@@ -450,8 +456,8 @@ JSON
 JSON
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"rot1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   # Should use sc_kerrigan pack, not peon
   [[ "$sound" == *"/packs/sc_kerrigan/sounds/"* ]]
 }
@@ -466,12 +472,12 @@ JSON
 JSON
   # First event pins the pack
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"rot2","permission_mode":"default"}'
-  sound1=$(afplay_sound)
+  sound1=$(played_sound)
   [[ "$sound1" == *"/packs/sc_kerrigan/sounds/"* ]]
 
   # Second event with same session_id uses same pack
   run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"rot2","permission_mode":"default"}'
-  sound2=$(afplay_sound)
+  sound2=$(played_sound)
   [[ "$sound2" == *"/packs/sc_kerrigan/sounds/"* ]]
 }
 
@@ -485,7 +491,7 @@ JSON
 JSON
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"rot3","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
-  afplay_was_called
-  sound=$(afplay_sound)
+  sound_was_played
+  sound=$(played_sound)
   [[ "$sound" == *"/packs/peon/sounds/"* ]]
 }

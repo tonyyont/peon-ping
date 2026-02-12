@@ -130,6 +130,27 @@ fi
 SCRIPT
   chmod +x "$MOCK_BIN/osascript"
 
+  # Mock paplay — log calls instead of playing sound (Linux PulseAudio/PipeWire)
+  cat > "$MOCK_BIN/paplay" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/paplay.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/paplay"
+
+  # Mock aplay — log calls instead of playing sound (Linux ALSA)
+  cat > "$MOCK_BIN/aplay" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/aplay.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/aplay"
+
+  # Mock notify-send — log calls instead of sending notification (Linux)
+  cat > "$MOCK_BIN/notify-send" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/notify-send.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/notify-send"
+
   # Mock curl — return a configurable version string
   cat > "$MOCK_BIN/curl" <<'SCRIPT'
 #!/bin/bash
@@ -178,5 +199,40 @@ afplay_call_count() {
     wc -l < "$TEST_DIR/afplay.log" | tr -d ' '
   else
     echo "0"
+  fi
+}
+
+# Helper: check if paplay was called (Linux)
+paplay_was_called() {
+  [ -f "$TEST_DIR/paplay.log" ] && [ -s "$TEST_DIR/paplay.log" ]
+}
+
+# Helper: get the sound file paplay was called with
+paplay_sound() {
+  if [ -f "$TEST_DIR/paplay.log" ]; then
+    # paplay log format: --volume=XXXXX /path/to/sound.wav
+    tail -1 "$TEST_DIR/paplay.log" | awk '{print $NF}'
+  fi
+}
+
+# Helper: check if notify-send was called (Linux)
+notify_send_was_called() {
+  [ -f "$TEST_DIR/notify-send.log" ] && [ -s "$TEST_DIR/notify-send.log" ]
+}
+
+# --- Platform-agnostic helpers ---
+# These work regardless of whether the test runs on macOS or Linux
+
+# Helper: check if any audio player was called
+sound_was_played() {
+  afplay_was_called 2>/dev/null || paplay_was_called 2>/dev/null
+}
+
+# Helper: get the sound file that was played (any platform)
+played_sound() {
+  if afplay_was_called 2>/dev/null; then
+    afplay_sound
+  elif paplay_was_called 2>/dev/null; then
+    paplay_sound
   fi
 }

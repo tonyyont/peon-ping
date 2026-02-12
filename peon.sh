@@ -120,12 +120,31 @@ play_linux_sound() {
   esac
 }
 
+# --- Kill any previously playing peon-ping sound ---
+kill_previous_sound() {
+  local pidfile="$PEON_DIR/.sound.pid"
+  if [ -f "$pidfile" ]; then
+    local old_pid
+    old_pid=$(cat "$pidfile" 2>/dev/null)
+    if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+      kill "$old_pid" 2>/dev/null
+    fi
+    rm -f "$pidfile"
+  fi
+}
+
+save_sound_pid() {
+  echo "$1" > "$PEON_DIR/.sound.pid"
+}
+
 # --- Platform-aware audio playback ---
 play_sound() {
   local file="$1" vol="$2"
+  kill_previous_sound
   case "$PLATFORM" in
     mac)
       nohup afplay -v "$vol" "$file" >/dev/null 2>&1 &
+      save_sound_pid $!
       ;;
     wsl)
       local wpath
@@ -142,12 +161,14 @@ play_sound() {
         Start-Sleep -Seconds 3
         \$p.Close()
       " &>/dev/null &
+      save_sound_pid $!
       ;;
     linux)
       local player
       player=$(detect_linux_player) || player=""
       if [ -n "$player" ]; then
         play_linux_sound "$file" "$vol" "$player"
+        save_sound_pid $!
       fi
       ;;
   esac
@@ -157,10 +178,11 @@ play_sound() {
 # Args: msg, title, color (red/blue/yellow)
 send_notification() {
   local msg="$1" title="$2" color="${3:-red}"
+  local icon_path="$PEON_DIR/docs/peon-icon.png"
   case "$PLATFORM" in
     mac)
       # Use terminal-native escape sequences where supported (shows terminal icon).
-      # Falls back to osascript which attributes notifications to Script Editor.
+      # Falls back to terminal-notifier (with peon icon) or osascript.
       case "${TERM_PROGRAM:-}" in
         iTerm.app)
           # iTerm2 OSC 9 — notification with iTerm2 icon
@@ -171,12 +193,21 @@ send_notification() {
           printf '\e]99;i=peon:d=0;%s\e\\' "$title: $msg" 2>/dev/null
           ;;
         *)
-          # Terminal.app, Warp, Ghostty, etc. — no native escape; use osascript
-          nohup osascript - "$msg" "$title" >/dev/null 2>&1 <<'APPLESCRIPT' &
+          if command -v terminal-notifier &>/dev/null && [ -f "$icon_path" ]; then
+            # terminal-notifier supports custom icon (brew install terminal-notifier)
+            nohup terminal-notifier \
+              -title "$title" \
+              -message "$msg" \
+              -appIcon "$icon_path" \
+              -group "peon-ping" >/dev/null 2>&1 &
+          else
+            # Terminal.app, Warp, Ghostty, etc. — no native escape; use osascript
+            nohup osascript - "$msg" "$title" >/dev/null 2>&1 <<'APPLESCRIPT' &
 on run argv
   display notification (item 1 of argv) with title (item 2 of argv)
 end run
 APPLESCRIPT
+          fi
           ;;
       esac
       ;;
@@ -188,6 +219,10 @@ APPLESCRIPT
         yellow) rgb_r=200 rgb_g=160 rgb_b=0   ;;
         red)    rgb_r=180 rgb_g=0   rgb_b=0   ;;
       esac
+      local icon_win_path=""
+      if [ -f "$icon_path" ]; then
+        icon_win_path=$(wslpath -w "$icon_path" 2>/dev/null || true)
+      fi
       (
         # Claim a popup slot for vertical stacking
         slot_dir="/tmp/peon-ping-popups"
@@ -212,12 +247,27 @@ APPLESCRIPT
               (\$screen.WorkingArea.X + (\$screen.WorkingArea.Width - 500) / 2),
               (\$screen.WorkingArea.Y + $y_offset)
             )
-            \$label = New-Object System.Windows.Forms.Label
+            \$iconLeft = 10
+            \$iconSize = 60
+            if ('$icon_win_path' -ne '' -and (Test-Path '$icon_win_path')) {
+              \$pb = New-Object System.Windows.Forms.PictureBox
+              \$pb.Image = [System.Drawing.Image]::FromFile('$icon_win_path')
+              \$pb.SizeMode = 'Zoom'
+              \$pb.Size = New-Object System.Drawing.Size(\$iconSize, \$iconSize)
+              \$pb.Location = New-Object System.Drawing.Point(\$iconLeft, 10)
+              \$pb.BackColor = [System.Drawing.Color]::Transparent
+              \$form.Controls.Add(\$pb)
+              \$label = New-Object System.Windows.Forms.Label
+              \$label.Location = New-Object System.Drawing.Point((\$iconLeft + \$iconSize + 5), 0)
+              \$label.Size = New-Object System.Drawing.Size((500 - \$iconLeft - \$iconSize - 15), 80)
+            } else {
+              \$label = New-Object System.Windows.Forms.Label
+              \$label.Dock = 'Fill'
+            }
             \$label.Text = '$msg'
             \$label.ForeColor = [System.Drawing.Color]::White
             \$label.Font = New-Object System.Drawing.Font('Segoe UI', 16, [System.Drawing.FontStyle]::Bold)
             \$label.TextAlign = 'MiddleCenter'
-            \$label.Dock = 'Fill'
             \$form.Controls.Add(\$label)
             \$form.Show()
           }
@@ -233,7 +283,11 @@ APPLESCRIPT
         case "$color" in
           red) urgency="critical" ;;
         esac
-        nohup notify-send --urgency="$urgency" "$title" "$msg" >/dev/null 2>&1 &
+        local icon_flag=""
+        if [ -f "$icon_path" ]; then
+          icon_flag="--icon=$icon_path"
+        fi
+        nohup notify-send --urgency="$urgency" $icon_flag "$title" "$msg" >/dev/null 2>&1 &
       fi
       ;;
   esac
@@ -733,6 +787,22 @@ if event == 'Stop':
         notify = ''
     state['last_stop_time'] = now
     state_dirty = True
+
+# --- Suppress sounds during session replay (claude -c) ---
+# When continuing a session, Claude fires SessionStart then immediately replays
+# old events. Suppress all sounds within 3s of SessionStart for the same session.
+now = time.time()
+if event == 'SessionStart':
+    session_starts = state.get('session_start_times', {})
+    session_starts[session_id] = now
+    state['session_start_times'] = session_starts
+    state_dirty = True
+elif category:
+    session_starts = state.get('session_start_times', {})
+    start_time = session_starts.get(session_id, 0)
+    if start_time and (now - start_time) < 3:
+        category = ''
+        notify = ''
 
 # --- Check if category is enabled ---
 if category and not cat_enabled.get(category, True):

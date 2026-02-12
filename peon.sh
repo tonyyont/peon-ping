@@ -45,6 +45,19 @@ play_sound() {
         \$p.Close()
       " &>/dev/null &
       ;;
+    linux)
+      if command -v paplay &>/dev/null; then
+        local vol_scaled
+        vol_scaled=$(awk "BEGIN {printf \"%d\", $vol * 65536}")
+        nohup paplay --volume="$vol_scaled" "$file" >/dev/null 2>&1 &
+      elif command -v ffplay &>/dev/null; then
+        local vol_scaled
+        vol_scaled=$(awk "BEGIN {printf \"%d\", $vol * 100}")
+        nohup ffplay -nodisp -autoexit -volume "$vol_scaled" "$file" >/dev/null 2>&1 &
+      elif command -v aplay &>/dev/null; then
+        nohup aplay "$file" >/dev/null 2>&1 &
+      fi
+      ;;
   esac
 }
 
@@ -107,6 +120,20 @@ APPLESCRIPT
         rm -rf "$slot_dir/slot-$slot"
       ) &
       ;;
+    linux)
+      local urgency="normal"
+      case "$color" in
+        red) urgency="critical" ;;
+        blue|yellow) urgency="normal" ;;
+      esac
+
+      nohup notify-send \
+        --urgency="$urgency" \
+        --app-name="peon-ping" \
+        --expire-time=4000 \
+        "$title" "$msg" \
+        >/dev/null 2>&1 &
+      ;;
   esac
 }
 
@@ -123,6 +150,9 @@ terminal_is_focused() {
       ;;
     wsl)
       # Checking Windows focus from WSL adds too much latency; always notify
+      return 1
+      ;;
+    linux)
       return 1
       ;;
     *)

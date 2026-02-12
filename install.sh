@@ -42,8 +42,8 @@ else
 fi
 
 # --- Prerequisites ---
-if [ "$PLATFORM" != "mac" ] && [ "$PLATFORM" != "wsl" ]; then
-  echo "Error: peon-ping requires macOS or WSL (Windows Subsystem for Linux)"
+if [ "$PLATFORM" = "unknown" ]; then
+  echo "Error: peon-ping requires macOS, WSL, or Linux"
   exit 1
 fi
 
@@ -65,6 +65,20 @@ elif [ "$PLATFORM" = "wsl" ]; then
   if ! command -v wslpath &>/dev/null; then
     echo "Error: wslpath is required (should be built into WSL)"
     exit 1
+  fi
+elif [ "$PLATFORM" = "linux" ]; then
+  if ! command -v paplay &>/dev/null && \
+     ! command -v ffplay &>/dev/null && \
+     ! command -v aplay &>/dev/null; then
+    echo "Error: No audio backend found (need paplay, ffplay, or aplay)"
+    echo "  Ubuntu/Debian: sudo apt install pulseaudio-utils"
+    echo "  Fedora: sudo dnf install pulseaudio-utils"
+    echo "  Arch: sudo pacman -S pulseaudio"
+    exit 1
+  fi
+
+  if ! command -v notify-send &>/dev/null; then
+    echo "Warning: notify-send not found (install libnotify-bin for notifications)"
   fi
 fi
 
@@ -275,6 +289,16 @@ if [ -n "$TEST_SOUND" ]; then
       Start-Sleep -Seconds 3
       \$p.Close()
     " 2>/dev/null
+  elif [ "$PLATFORM" = "linux" ]; then
+    if command -v paplay &>/dev/null; then
+      vol_scaled=$(awk "BEGIN {printf \"%d\", 0.3 * 65536}")
+      paplay --volume="$vol_scaled" "$TEST_SOUND" 2>/dev/null || true
+    elif command -v ffplay &>/dev/null; then
+      vol_scaled=$(awk "BEGIN {printf \"%d\", 0.3 * 100}")
+      ffplay -nodisp -autoexit -volume "$vol_scaled" "$TEST_SOUND" >/dev/null 2>&1 || true
+    elif command -v aplay &>/dev/null; then
+      aplay "$TEST_SOUND" 2>/dev/null || true
+    fi
   fi
   echo "Sound working!"
 else

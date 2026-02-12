@@ -141,6 +141,34 @@ fi
 SCRIPT
   chmod +x "$MOCK_BIN/curl"
 
+  # Mock paplay — log calls for Linux audio testing
+  cat > "$MOCK_BIN/paplay" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/paplay.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/paplay"
+
+  # Mock ffplay — log calls for Linux audio testing
+  cat > "$MOCK_BIN/ffplay" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/ffplay.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/ffplay"
+
+  # Mock aplay — log calls for Linux audio testing
+  cat > "$MOCK_BIN/aplay" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/aplay.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/aplay"
+
+  # Mock notify-send — log calls for Linux notification testing
+  cat > "$MOCK_BIN/notify-send" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/notify-send.log"
+SCRIPT
+  chmod +x "$MOCK_BIN/notify-send"
+
   export PATH="$MOCK_BIN:$PATH"
 
   # Locate peon.sh (relative to this test file)

@@ -489,3 +489,40 @@ JSON
   sound=$(afplay_sound)
   [[ "$sound" == *"/packs/peon/sounds/"* ]]
 }
+
+# ============================================================
+# Linux platform support
+# ============================================================
+
+@test "Linux plays sound via paplay on SessionStart" {
+  export PLATFORM="linux"
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"linux1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  [ -f "$TEST_DIR/paplay.log" ]
+  [ -s "$TEST_DIR/paplay.log" ]
+  grep -q "32768" "$TEST_DIR/paplay.log"
+}
+
+@test "Linux sends notification on Stop event" {
+  export PLATFORM="linux"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"linux2","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  [ -f "$TEST_DIR/notify-send.log" ]
+  [ -s "$TEST_DIR/notify-send.log" ]
+  grep -q "normal" "$TEST_DIR/notify-send.log"
+}
+
+@test "Linux uses critical urgency for permission requests" {
+  export PLATFORM="linux"
+  run_peon '{"hook_event_name":"PermissionRequest","cwd":"/tmp/myproject","session_id":"linux3","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  [ -f "$TEST_DIR/notify-send.log" ]
+  grep -q "critical" "$TEST_DIR/notify-send.log"
+}
+
+@test "Linux terminal focus check always returns false (always notify)" {
+  export PLATFORM="linux"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"linux4","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  [ -f "$TEST_DIR/notify-send.log" ]
+}

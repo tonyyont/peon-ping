@@ -88,6 +88,7 @@ Edit `~/.claude/hooks/peon-ping/config.json`:
 | `ra2_soviet_engineer` | Soviet Engineer (Red Alert 2) | "Tools ready", "Yes, commander", "Engineering" | [@msukkari](https://github.com/msukkari) |
 | `sc_battlecruiser` | Battlecruiser (StarCraft) | "Battlecruiser operational", "Make it happen", "Engage" | [@garysheng](https://github.com/garysheng) |
 | `sc_kerrigan` | Sarah Kerrigan (StarCraft) | "I gotcha", "What now?", "Easily amused, huh?" | [@garysheng](https://github.com/garysheng) |
+| `wc2_peasant` | Human Peasant (Warcraft II) | "Ready to serve.", "Job's done.", "Right-o." | [@sebbeth](https://github.com/sebbeth) |
 
 Switch packs from the CLI:
 

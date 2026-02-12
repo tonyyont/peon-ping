@@ -157,7 +157,9 @@ Or edit `~/.claude/hooks/peon-ping/config.json` directly:
 { "active_pack": "ra2_soviet_engineer" }
 ```
 
-Want to add your own pack? See [CONTRIBUTING.md](CONTRIBUTING.md).
+Want to add your own pack? Create a repo, write an `openpeon.json` manifest, and submit to the [OpenPeon registry](https://github.com/PeonPing/registry). See the [full guide at openpeon.com/create](https://openpeon.com/create) or [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Browse all packs at [openpeon.com/packs](https://openpeon.com/packs).
 
 ## Uninstall
 

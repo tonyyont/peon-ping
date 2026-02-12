@@ -5,9 +5,11 @@
 set -euo pipefail
 
 LOCAL_MODE=false
+INSTALL_ALL=false
 for arg in "$@"; do
   case "$arg" in
     --local) LOCAL_MODE=true ;;
+    --all) INSTALL_ALL=true ;;
   esac
 done
 
@@ -19,9 +21,15 @@ fi
 INSTALL_DIR="$BASE_DIR/hooks/peon-ping"
 SETTINGS="$BASE_DIR/settings.json"
 REPO_BASE="https://raw.githubusercontent.com/PeonPing/peon-ping/main"
+REGISTRY_URL="https://peonping.github.io/registry/index.json"
 
-# All available sound packs (add new packs here)
-PACKS="acolyte_ru aoe2 aom_greek brewmaster_ru dota2_axe duke_nukem glados hd2_helldiver molag_bal peon peon_cz peon_es peon_fr peon_pl peon_ru peasant peasant_cz peasant_es peasant_fr peasant_ru ra2_kirov ra2_soviet_engineer ra_soviet rick sc_battlecruiser sc_firebat sc_kerrigan sc_medic sc_scv sc_tank sc_terran sc_vessel sheogorath sopranos tf2_engineer wc2_peasant murloc"
+# Default packs (curated English set installed by default)
+DEFAULT_PACKS="peon peasant glados sc_kerrigan sc_battlecruiser ra2_kirov dota2_axe duke_nukem tf2_engineer hd2_helldiver murloc"
+
+# Fallback pack list (used if registry is unreachable)
+FALLBACK_PACKS="acolyte_ru aoe2 aom_greek brewmaster_ru dota2_axe duke_nukem glados hd2_helldiver molag_bal peon peon_cz peon_es peon_fr peon_pl peon_ru peasant peasant_cz peasant_es peasant_fr peasant_ru ra2_kirov ra2_soviet_engineer ra_soviet rick sc_battlecruiser sc_firebat sc_kerrigan sc_medic sc_scv sc_tank sc_terran sc_vessel sheogorath sopranos tf2_engineer wc2_peasant"
+FALLBACK_REPO="PeonPing/og-packs"
+FALLBACK_REF="v1.0.0"
 
 # --- Platform detection ---
 detect_platform() {
@@ -117,14 +125,11 @@ if [ -n "${BASH_SOURCE[0]:-}" ] && [ "${BASH_SOURCE[0]}" != "bash" ]; then
   fi
 fi
 
-# --- Install/update core files ---
-for pack in $PACKS; do
-  mkdir -p "$INSTALL_DIR/packs/$pack/sounds"
-done
+# --- Install/update core tool files ---
+mkdir -p "$INSTALL_DIR"
 
 if [ -n "$SCRIPT_DIR" ]; then
-  # Local clone — copy files directly (including sounds)
-  cp -r "$SCRIPT_DIR/packs/"* "$INSTALL_DIR/packs/"
+  # Local clone — copy core tool files
   cp "$SCRIPT_DIR/peon.sh" "$INSTALL_DIR/"
   cp "$SCRIPT_DIR/completions.bash" "$INSTALL_DIR/"
   cp "$SCRIPT_DIR/completions.fish" "$INSTALL_DIR/"
@@ -134,11 +139,15 @@ if [ -n "$SCRIPT_DIR" ]; then
     mkdir -p "$INSTALL_DIR/adapters"
     cp "$SCRIPT_DIR/adapters/"*.sh "$INSTALL_DIR/adapters/" 2>/dev/null || true
   fi
+  if [ -f "$SCRIPT_DIR/docs/peon-icon.png" ]; then
+    mkdir -p "$INSTALL_DIR/docs"
+    cp "$SCRIPT_DIR/docs/peon-icon.png" "$INSTALL_DIR/docs/"
+  fi
   if [ "$UPDATING" = false ]; then
     cp "$SCRIPT_DIR/config.json" "$INSTALL_DIR/"
   fi
 else
-  # curl|bash — download from GitHub (sounds are version-controlled in repo)
+  # curl|bash — download core tool files from GitHub
   echo "Downloading from GitHub..."
   curl -fsSL "$REPO_BASE/peon.sh" -o "$INSTALL_DIR/peon.sh"
   curl -fsSL "$REPO_BASE/completions.bash" -o "$INSTALL_DIR/completions.bash"
@@ -148,43 +157,101 @@ else
   mkdir -p "$INSTALL_DIR/adapters"
   curl -fsSL "$REPO_BASE/adapters/codex.sh" -o "$INSTALL_DIR/adapters/codex.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/cursor.sh" -o "$INSTALL_DIR/adapters/cursor.sh" 2>/dev/null || true
-  for pack in $PACKS; do
-    # Try openpeon.json first, fall back to manifest.json
-    if ! curl -fsSL "$REPO_BASE/packs/$pack/openpeon.json" -o "$INSTALL_DIR/packs/$pack/openpeon.json" 2>/dev/null; then
-      curl -fsSL "$REPO_BASE/packs/$pack/manifest.json" -o "$INSTALL_DIR/packs/$pack/manifest.json" 2>/dev/null || true
-    fi
-  done
-  # Download sound files for each pack
-  for pack in $PACKS; do
-    # Find the manifest (prefer openpeon.json)
-    manifest="$INSTALL_DIR/packs/$pack/openpeon.json"
-    if [ ! -f "$manifest" ]; then
-      manifest="$INSTALL_DIR/packs/$pack/manifest.json"
-    fi
-    [ ! -f "$manifest" ] && continue
-    # Extract sound filenames from manifest and download each one
-    python3 -c "
+  mkdir -p "$INSTALL_DIR/docs"
+  curl -fsSL "$REPO_BASE/docs/peon-icon.png" -o "$INSTALL_DIR/docs/peon-icon.png" 2>/dev/null || true
+  if [ "$UPDATING" = false ]; then
+    curl -fsSL "$REPO_BASE/config.json" -o "$INSTALL_DIR/config.json"
+  fi
+fi
+
+# --- Fetch pack list from registry ---
+PACKS=""
+ALL_PACKS=""
+REGISTRY_JSON=""
+echo "Fetching pack registry..."
+if REGISTRY_JSON=$(curl -fsSL "$REGISTRY_URL" 2>/dev/null); then
+  ALL_PACKS=$(python3 -c "
+import json, sys
+data = json.loads(sys.stdin.read())
+for p in data.get('packs', []):
+    print(p['name'])
+" <<< "$REGISTRY_JSON")
+  TOTAL_AVAILABLE=$(echo "$ALL_PACKS" | wc -l | tr -d ' ')
+  echo "Registry: $TOTAL_AVAILABLE packs available"
+else
+  echo "Warning: Could not fetch registry, using fallback pack list"
+  ALL_PACKS="$FALLBACK_PACKS"
+fi
+
+# Select packs to install
+if [ "$INSTALL_ALL" = true ]; then
+  PACKS="$ALL_PACKS"
+  echo "Installing all $(echo "$PACKS" | wc -l | tr -d ' ') packs..."
+else
+  PACKS="$DEFAULT_PACKS"
+  echo "Installing $(echo "$PACKS" | wc -w | tr -d ' ') default packs (use --all for all $(echo "$ALL_PACKS" | wc -l | tr -d ' '))"
+fi
+
+# --- Download sound packs ---
+for pack in $PACKS; do
+  mkdir -p "$INSTALL_DIR/packs/$pack/sounds"
+
+  # Get source info from registry (or use fallback)
+  SOURCE_REPO=""
+  SOURCE_REF=""
+  SOURCE_PATH=""
+  if [ -n "$REGISTRY_JSON" ]; then
+    eval "$(python3 -c "
+import json, sys
+data = json.loads(sys.stdin.read())
+for p in data.get('packs', []):
+    if p['name'] == '$pack':
+        print(f\"SOURCE_REPO='{p.get('source_repo', '')}'\")
+        print(f\"SOURCE_REF='{p.get('source_ref', 'main')}'\")
+        print(f\"SOURCE_PATH='{p.get('source_path', '')}'\")
+        break
+" <<< "$REGISTRY_JSON")"
+  fi
+
+  # Fallback if no registry data
+  if [ -z "$SOURCE_REPO" ]; then
+    SOURCE_REPO="$FALLBACK_REPO"
+    SOURCE_REF="$FALLBACK_REF"
+    SOURCE_PATH="$pack"
+  fi
+
+  # Construct base URL for this pack's files
+  if [ -n "$SOURCE_PATH" ]; then
+    PACK_BASE="https://raw.githubusercontent.com/$SOURCE_REPO/$SOURCE_REF/$SOURCE_PATH"
+  else
+    PACK_BASE="https://raw.githubusercontent.com/$SOURCE_REPO/$SOURCE_REF"
+  fi
+
+  # Download manifest
+  if ! curl -fsSL "$PACK_BASE/openpeon.json" -o "$INSTALL_DIR/packs/$pack/openpeon.json" 2>/dev/null; then
+    echo "  Warning: failed to download manifest for $pack" >&2
+    continue
+  fi
+
+  # Download sound files
+  manifest="$INSTALL_DIR/packs/$pack/openpeon.json"
+  python3 -c "
 import json, os
 m = json.load(open('$manifest'))
 seen = set()
 for cat in m.get('categories', {}).values():
     for s in cat.get('sounds', []):
         f = s['file']
-        # CESP format uses 'sounds/file.wav', extract just the filename
         basename = os.path.basename(f)
         if basename not in seen:
             seen.add(basename)
             print(basename)
 " | while read -r sfile; do
-      if ! curl -fsSL "$REPO_BASE/packs/$pack/sounds/$sfile" -o "$INSTALL_DIR/packs/$pack/sounds/$sfile" </dev/null 2>/dev/null; then
-        echo "  Warning: failed to download $pack/sounds/$sfile" >&2
-      fi
-    done
+    if ! curl -fsSL "$PACK_BASE/sounds/$sfile" -o "$INSTALL_DIR/packs/$pack/sounds/$sfile" </dev/null 2>/dev/null; then
+      echo "  Warning: failed to download $pack/sounds/$sfile" >&2
+    fi
   done
-  if [ "$UPDATING" = false ]; then
-    curl -fsSL "$REPO_BASE/config.json" -o "$INSTALL_DIR/config.json"
-  fi
-fi
+done
 
 chmod +x "$INSTALL_DIR/peon.sh"
 
@@ -403,7 +470,7 @@ echo ""
 if [ "$UPDATING" = true ]; then
   echo "=== Update complete! ==="
   echo ""
-  echo "Updated: peon.sh, manifest.json"
+  echo "Updated: peon.sh, sound packs"
   echo "Preserved: config.json, state"
 else
   echo "=== Installation complete! ==="

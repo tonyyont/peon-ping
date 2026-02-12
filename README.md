@@ -29,12 +29,15 @@ One command. Takes 10 seconds. macOS and WSL2 (Windows). Re-run to update (sound
 
 **StarCraft Terran Edition** features iconic unit voices from the Terran faction:
 
-| Event | Sound | Examples |
+| Event | Unit | Voice Lines |
 |---|---|---|
-| Session starts | Greeting | *"Good to go, sir"* (SCV), *"Ready to roll out"* (Siege Tank), *"Need a light?"* (Firebat) |
-| Task finishes | Acknowledgment | *"Affirmative"* (SCV), *"Done and done"* (Tank), *"All patched up!"* (Medic) |
-| Permission needed | Alert | *"I read you"* (SCV), *"Orders received"* (Tank), *"Receiving"* (Vessel) |
-| Rapid prompts (3+ in 10s) | Easter egg | *Coming soon!* |
+| Session starts | Siege Tank | *"Ready to roll out"* |
+| Task finishes | SCV | *"Good to go, sir"* |
+| Acknowledgment | Science Vessel | *"Receiving"*, *"Affirmative"*, *"Explorer reporting"* |
+| Permission needed | Medic | *"The doctor is in"*, *"Where does it hurt?"*, *"All patched up!"*, *"Yes, doctor"* |
+| Errors | Firebat | *"Need a light?"*, *"Ready to roast!"*, *"Fueled up!"*, *"Say the word"* |
+| Resource limit | Siege Tank | *"Absolutely"* |
+| Rapid prompts (3+ in 10s) | Firebat | *"Need a light?"*, *"Ready to roast!"*, *"Fueled up!"* |
 
 Plus Terminal tab titles (`● project: done`) and desktop notifications when your terminal isn't focused.
 
@@ -91,17 +94,17 @@ Edit `~/.claude/hooks/peon-ping/config.json`:
 
 | Pack | Description | Sounds | By |
 |---|---|---|---|
-| `sc_terran` ⭐ | **All Terran Units Mixed** | All 5 units randomly mixed - SCV, Firebat, Medic, Siege Tank, Science Vessel | [@workdd](https://github.com/workdd) |
+| `sc_terran` ⭐ | **All Terran Units Mixed** | SCV, Firebat, Medic, Siege Tank, Science Vessel voices dynamically mixed across different events | [@workdd](https://github.com/workdd) |
 
-**Individual Units** (if you prefer a specific unit):
+Features 14 iconic Terran unit voice lines including:
+- **Greeting**: "Ready to roll out" (Siege Tank)
+- **Task Complete**: "Good to go, sir" (SCV)
+- **Acknowledgment**: Science Vessel voices ("Receiving", "Affirmative", "Explorer reporting")
+- **Permission**: Medic voices ("The doctor is in", "Where does it hurt?", "All patched up!", "Yes, doctor")
+- **Error**: Firebat voices ("Need a light?", "Ready to roast!", "Fueled up!", "Say the word")
+- **Resource Limit**: "Absolutely" (Siege Tank)
 
-| Pack | Unit | Sounds | By |
-|---|---|---|---|
-| `sc_scv` | SCV | "Good to go, sir", "Affirmative", "I read you" | [@workdd](https://github.com/workdd) |
-| `sc_firebat` | Firebat | "Need a light?", "Ready to roast!", "Fueled up!" | [@workdd](https://github.com/workdd) |
-| `sc_medic` | Medic | "The doctor is in", "Where does it hurt?", "All patched up!" | [@workdd](https://github.com/workdd) |
-| `sc_tank` | Siege Tank | "Ready to roll out", "Absolutely", "Done and done" | [@workdd](https://github.com/workdd) |
-| `sc_vessel` | Science Vessel | "Explorer reporting", "Receiving", "Affirmative" | [@workdd](https://github.com/workdd) |
+All audio files normalized to identical volume levels for consistent playback.
 
 ### Original Packs (from upstream)
 

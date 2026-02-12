@@ -105,6 +105,7 @@ Edit `$CLAUDE_CONFIG_DIR/hooks/peon-ping/config.json` (default: `~/.claude/hooks
 | `tf2_engineer` | Engineer (Team Fortress 2) | "Sentry going up.", "Nice work!", "Cowboy up!" | [@Arie](https://github.com/Arie) |
 | `sc_battlecruiser` | Battlecruiser (StarCraft) | "Battlecruiser operational", "Make it happen", "Engage" | [@garysheng](https://github.com/garysheng) |
 | `sc_kerrigan` | Sarah Kerrigan (StarCraft) | "I gotcha", "What now?", "Easily amused, huh?" | [@garysheng](https://github.com/garysheng) |
+| `dota2_axe` | Axe (Dota 2) | "Axe is ready!", "Axe-actly!", "Come and get it!" | [@x-n2o](https://github.com/x-n2o) |
 | `glados` | GLaDOS (Portal) | "Oh, it's you.", "You monster.", "Your entire team is dead." | [@DoubleGremlin181](https://github.com/DoubleGremlin181) |
 | `molag_bal` | Molag Bal (Elder Scrolls) | "Speak.", "Crush him.", "You're mine now." | [@lloydaf](https://github.com/lloydaf) |
 | `sheogorath` | Sheogorath (Elder Scrolls) | "Greetings.", "Good choice.", "Boring, boring, boring." | [@lloydaf](https://github.com/lloydaf) |

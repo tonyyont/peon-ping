@@ -107,6 +107,7 @@ peon-ping works with any agentic IDE that supports hooks. Adapters translate IDE
 | **Claude Code** | Built-in | `curl \| bash` install handles everything |
 | **OpenAI Codex** | Adapter | Add `command = "bash ~/.claude/hooks/peon-ping/adapters/codex.sh"` to `~/.codex/config.toml` under `[notify]` |
 | **Cursor** | Adapter | Add hook entries to `~/.cursor/hooks.json` pointing to `adapters/cursor.sh` |
+| **OpenCode** | Adapter | `curl -fsSL .../adapters/opencode.sh \| bash` — installs TypeScript plugin to `~/.config/opencode/plugins/` |
 
 ## Sound packs
 

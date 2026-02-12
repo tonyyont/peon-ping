@@ -249,8 +249,6 @@ bats tests/
 powershell -ExecutionPolicy Bypass -File tests\test-windows.ps1
 ```
 
-See [tests/README.md](tests/README.md) for detailed testing documentation.
-
 ## Links
 
 - [Landing page](https://peon-ping.vercel.app/)

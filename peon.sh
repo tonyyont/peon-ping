@@ -1468,21 +1468,23 @@ if [ -n "$TAB_COLOR_RGB" ] && [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
   printf "\033]6;1;bg;blue;brightness;%d\a" "$_B" > /dev/tty 2>/dev/null || true
 fi
 
-# --- Play sound ---
-if [ -n "$SOUND_FILE" ] && [ -f "$SOUND_FILE" ]; then
-  play_sound "$SOUND_FILE" "$VOLUME"
-fi
-
-# --- Smart notification: only when terminal is NOT frontmost ---
-if [ -n "$NOTIFY" ] && [ "$PAUSED" != "true" ] && [ "${DESKTOP_NOTIF:-true}" = "true" ]; then
-  if ! terminal_is_focused; then
-    send_notification "$MSG" "$TITLE" "${NOTIFY_COLOR:-red}"
+(
+  # --- Play sound ---
+  if [ -n "$SOUND_FILE" ] && [ -f "$SOUND_FILE" ]; then
+    play_sound "$SOUND_FILE" "$VOLUME"
   fi
-fi
 
-# --- Mobile push notification (always sends when configured, regardless of focus) ---
-if [ -n "$NOTIFY" ] && [ "$PAUSED" != "true" ] && [ "${MOBILE_NOTIF:-false}" = "true" ]; then
-  send_mobile_notification "$MSG" "$TITLE" "${NOTIFY_COLOR:-red}"
-fi
+  # --- Smart notification: only when terminal is NOT frontmost ---
+  if [ -n "$NOTIFY" ] && [ "$PAUSED" != "true" ] && [ "${DESKTOP_NOTIF:-true}" = "true" ]; then
+    if ! terminal_is_focused; then
+      send_notification "$MSG" "$TITLE" "${NOTIFY_COLOR:-red}"
+    fi
+  fi
+
+  # --- Mobile push notification (always sends when configured, regardless of focus) ---
+  if [ -n "$NOTIFY" ] && [ "$PAUSED" != "true" ] && [ "${MOBILE_NOTIF:-false}" = "true" ]; then
+    send_mobile_notification "$MSG" "$TITLE" "${NOTIFY_COLOR:-red}"
+  fi
+) & disown
 
 exit 0

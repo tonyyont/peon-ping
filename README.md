@@ -80,22 +80,33 @@ Tab completion is supported — type `peon --pack <TAB>` to see available pack n
 
 Pausing mutes sounds and desktop notifications instantly. Persists across sessions until you resume. Tab titles remain active when paused.
 
-## Per-Project Configuration
+## Installation Modes
 
-You can have different settings for different projects:
+Choose one installation mode:
 
 ```bash
-# Install globally once
+# Global install (default)
 ./install.sh
+# or explicitly
+./install.sh --global
 
-# In a specific project, create local config
-./install.sh --init-config
+# Local install (current project only)
+./install.sh --local
 ```
 
-This creates `./.claude/hooks/peon-ping/config.json` in your project — perfect for:
-- Different volume levels per project
-- Different sound packs per project
-- Project-specific settings that don't affect other work
+`--global` installs to `~/.claude/hooks/peon-ping/` and wires global hooks.
+
+`--local` installs to `./.claude/hooks/peon-ping/` for the current project only.
+
+If the opposite mode is already installed, the installer will prompt you to remove it to avoid conflicts.
+
+To create only a local project config without reinstalling scripts:
+
+```bash
+./install.sh --init-local-config
+```
+
+This creates `./.claude/hooks/peon-ping/config.json` in your project.
 
 ## Configuration
 
@@ -119,7 +130,6 @@ Edit `~/.claude/hooks/peon-ping/config.json` (global) or `./.claude/hooks/peon-p
 - **categories**: Toggle individual sound types on/off
 - **annoyed_threshold / annoyed_window_seconds**: How many prompts in N seconds triggers the easter egg
 - **pack_rotation**: Array of pack names (e.g. `["peon", "sc_kerrigan", "peasant"]`). Each Claude Code session randomly gets one pack from the list and keeps it for the whole session. Leave empty `[]` to use `active_pack` instead.
-- **local_only**: When `true` in global config, the hook only runs if a local (project-specific) config exists. Useful for teams who want to enforce per-project configuration. Set in `~/.claude/hooks/peon-ping/config.json` to apply globally.
 
 ## Sound packs
 

@@ -2,8 +2,8 @@
 # setup-icon.sh — Replace terminal-notifier's default icon with the peon icon
 #
 # Usage:
-#   bash scripts/setup-icon.sh
-#   bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/scripts/setup-icon.sh)
+#   bash adapters/opencode/setup-icon.sh
+#   bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode/setup-icon.sh)
 #
 # Requires: terminal-notifier (brew install terminal-notifier)
 # Uses: sips + iconutil (built-in macOS tools, no extra deps)
@@ -25,7 +25,7 @@ for path in \
   "${BREW_PREFIX:+$BREW_PREFIX/lib/peon-ping/docs/peon-icon.png}" \
   "$HOME/.config/opencode/peon-ping/peon-icon.png" \
   "$HOME/.claude/hooks/peon-ping/docs/peon-icon.png" \
-  "$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/docs/peon-icon.png"; do
+  "$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/docs/peon-icon.png"; do
   [ -n "$path" ] && [ -f "$path" ] && ICON="$path" && break
 done
 

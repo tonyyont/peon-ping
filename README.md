@@ -188,13 +188,13 @@ The installer copies `peon-ping.ts` to `~/.config/opencode/plugins/` and creates
 By default, `terminal-notifier` shows a generic Terminal icon. The included script replaces it with the peon icon using built-in macOS tools (`sips` + `iconutil`) — no extra dependencies.
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/scripts/setup-icon.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode/setup-icon.sh)
 ```
 
 Or if installed locally (Homebrew / git clone):
 
 ```bash
-bash ~/.claude/hooks/peon-ping/scripts/setup-icon.sh
+bash ~/.claude/hooks/peon-ping/adapters/opencode/setup-icon.sh
 ```
 
 The script auto-finds the peon icon (Homebrew libexec, OpenCode config, or Claude hooks dir), generates a proper `.icns`, backs up the original `Terminal.icns`, and replaces it. Re-run after `brew upgrade terminal-notifier`.

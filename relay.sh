@@ -18,6 +18,10 @@ set -uo pipefail
 # --- Configuration (env vars or CLI flags) ---
 RELAY_PORT="${PEON_RELAY_PORT:-19998}"
 PEON_DIR="${CLAUDE_PEON_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping}"
+# CESP shared path fallback (used by peon-ping-setup and standalone adapters)
+if [ ! -d "$PEON_DIR/packs" ] && [ -d "$HOME/.openpeon/packs" ]; then
+  PEON_DIR="$HOME/.openpeon"
+fi
 BIND_ADDR="${PEON_RELAY_BIND:-127.0.0.1}"
 DAEMON_MODE=false
 DAEMON_ACTION=""

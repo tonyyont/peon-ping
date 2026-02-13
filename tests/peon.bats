@@ -548,6 +548,51 @@ json.dump(c, open('$TEST_DIR/config.json', 'w'), indent=2)
   export CLAUDE_PEON_DIR="$TEST_DIR"
 }
 
+@test "packs list finds CESP shared packs at ~/.openpeon/packs" {
+  # Simulate Homebrew with CESP setup: script in Cellar, packs at ~/.openpeon/packs
+  FAKE_HOME="$(mktemp -d)"
+  CESP_DIR="$FAKE_HOME/.openpeon"
+  mkdir -p "$CESP_DIR/packs"
+  cp -R "$TEST_DIR/packs/peon" "$CESP_DIR/packs/"
+  echo '{}' > "$CESP_DIR/config.json"
+
+  # No Claude hooks dir — CESP path should be found
+  unset CLAUDE_PEON_DIR
+  run env HOME="$FAKE_HOME" bash "$PEON_SH" packs list
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"peon"* ]]
+  [[ "$output" == *"Orc Peon"* ]]
+
+  rm -rf "$FAKE_HOME"
+  export CLAUDE_PEON_DIR="$TEST_DIR"
+}
+
+@test "CESP shared path takes priority over Claude hooks dir" {
+  # Both paths exist — CESP should win
+  FAKE_HOME="$(mktemp -d)"
+  CESP_DIR="$FAKE_HOME/.openpeon"
+  HOOKS_DIR="$FAKE_HOME/.claude/hooks/peon-ping"
+  mkdir -p "$CESP_DIR/packs"
+  mkdir -p "$HOOKS_DIR/packs"
+
+  # Put different packs in each location
+  cp -R "$TEST_DIR/packs/peon" "$CESP_DIR/packs/"
+  cp -R "$TEST_DIR/packs/sc_kerrigan" "$HOOKS_DIR/packs/"
+  echo '{}' > "$CESP_DIR/config.json"
+  echo '{}' > "$HOOKS_DIR/config.json"
+
+  unset CLAUDE_PEON_DIR
+  run env HOME="$FAKE_HOME" bash "$PEON_SH" packs list
+  [ "$status" -eq 0 ]
+  # Should find peon (from CESP), not sc_kerrigan (from hooks)
+  [[ "$output" == *"peon"* ]]
+  [[ "$output" == *"Orc Peon"* ]]
+  [[ "$output" != *"sc_kerrigan"* ]]
+
+  rm -rf "$FAKE_HOME"
+  export CLAUDE_PEON_DIR="$TEST_DIR"
+}
+
 # ============================================================
 # packs use <name> (set specific pack)
 # ============================================================

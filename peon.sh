@@ -28,11 +28,17 @@ detect_platform() {
 PLATFORM=${PLATFORM:-$(detect_platform)}
 
 PEON_DIR="${CLAUDE_PEON_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-# Homebrew installs: script lives in Cellar but packs/config are in hooks dir
+# Homebrew/adapter installs: script lives in Cellar but packs/config are elsewhere
 if [ ! -d "$PEON_DIR/packs" ]; then
-  _hooks_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping"
-  [ -d "$_hooks_dir/packs" ] && PEON_DIR="$_hooks_dir"
-  unset _hooks_dir
+  # Check CESP shared path (used by peon-ping-setup and standalone adapters)
+  if [ -d "$HOME/.openpeon/packs" ]; then
+    PEON_DIR="$HOME/.openpeon"
+  else
+    # Fall back to Claude Code hooks dir
+    _hooks_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping"
+    [ -d "$_hooks_dir/packs" ] && PEON_DIR="$_hooks_dir"
+    unset _hooks_dir
+  fi
 fi
 CONFIG="$PEON_DIR/config.json"
 STATE="$PEON_DIR/.state.json"

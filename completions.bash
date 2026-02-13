@@ -18,9 +18,10 @@ _peon_completions() {
           COMPREPLY=( $(compgen -W "list use next remove" -- "$cur") )
         elif [ "$cword" -eq 3 ] && { [ "$prev" = "use" ] || [ "$prev" = "remove" ]; }; then
           packs_dir="${CLAUDE_PEON_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping}/packs"
+          [ ! -d "$packs_dir" ] && [ -d "$HOME/.openpeon/packs" ] && packs_dir="$HOME/.openpeon/packs"
           if [ -d "$packs_dir" ]; then
             local names
-            names=$(find "$packs_dir" -maxdepth 2 -name manifest.json -exec dirname {} \; 2>/dev/null | xargs -I{} basename {} | sort)
+            names=$(find "$packs_dir" -maxdepth 2 \( -name manifest.json -o -name openpeon.json \) -exec dirname {} \; 2>/dev/null | xargs -I{} basename {} | sort)
             COMPREPLY=( $(compgen -W "$names" -- "$cur") )
           fi
         fi

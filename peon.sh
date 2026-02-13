@@ -1020,7 +1020,7 @@ elif session_id in agent_sessions:
     sys.exit(0)
 
 # --- Pack rotation: pin a pack per session ---
-if pack_rotation:
+if pack_rotation and cfg.get('pack_rotation_mode', 'random') != 'off':
     session_packs = state.get('session_packs', {})
     if session_id in session_packs and session_packs[session_id] in pack_rotation:
         active_pack = session_packs[session_id]
@@ -1093,12 +1093,9 @@ elif event == 'Stop':
         category = ''
 elif event == 'Notification':
     if ntype == 'permission_prompt':
-        category = 'input.required'
+        # Sound is handled by the PermissionRequest event; only set tab title here
         status = 'needs approval'
         marker = '\u25cf '
-        notify = '1'
-        notify_color = 'red'
-        msg = project + '  \u2014  Permission needed'
     elif ntype == 'idle_prompt':
         status = 'done'
         marker = '\u25cf '

@@ -185,31 +185,19 @@ The installer copies `peon-ping.ts` to `~/.config/opencode/plugins/` and creates
 <details>
 <summary>🎨 Optional: custom peon icon for notifications</summary>
 
-By default, `terminal-notifier` shows a generic Terminal icon. You can replace it with the peon icon using built-in macOS tools (`sips` + `iconutil`) — no extra dependencies needed.
-
-**Why this is needed:** `terminal-notifier`'s `-appIcon` flag uses a deprecated API that modern macOS ignores. Replacing `Terminal.icns` inside the app bundle is the only reliable workaround.
+By default, `terminal-notifier` shows a generic Terminal icon. The included script replaces it with the peon icon using built-in macOS tools (`sips` + `iconutil`) — no extra dependencies.
 
 ```bash
-# 1. Generate .icns from peon-icon.png
-ICON="$HOME/.config/opencode/peon-ping/peon-icon.png"
-mkdir -p /tmp/peon.iconset
-for s in 16 32 64 128 256 512; do
-  sips -z $s $s "$ICON" --out "/tmp/peon.iconset/icon_${s}x${s}.png"
-  sips -z $((s*2)) $((s*2)) "$ICON" --out "/tmp/peon.iconset/icon_${s}x${s}@2x.png"
-done
-iconutil -c icns /tmp/peon.iconset -o /tmp/peon.icns
-
-# 2. Find terminal-notifier app bundle and replace the icon
-APP=$(dirname $(dirname $(dirname $(readlink -f $(which terminal-notifier)))))
-cp "$APP/Contents/Resources/Terminal.icns" "$APP/Contents/Resources/Terminal.icns.backup"
-cp /tmp/peon.icns "$APP/Contents/Resources/Terminal.icns"
-touch "$APP"
-
-# 3. Clean up
-rm -rf /tmp/peon.iconset /tmp/peon.icns
+bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/scripts/setup-icon.sh)
 ```
 
-After `brew upgrade terminal-notifier`, re-run these commands to re-apply the icon.
+Or if installed locally (Homebrew / git clone):
+
+```bash
+bash ~/.claude/hooks/peon-ping/scripts/setup-icon.sh
+```
+
+The script auto-finds the peon icon (Homebrew libexec, OpenCode config, or Claude hooks dir), generates a proper `.icns`, backs up the original `Terminal.icns`, and replaces it. Re-run after `brew upgrade terminal-notifier`.
 
 > **Future:** When [jamf/Notifier](https://github.com/jamf/Notifier) ships to Homebrew ([#32](https://github.com/jamf/Notifier/issues/32)), the plugin will migrate to it — Notifier has built-in `--rebrand` support, no icon hacks needed.
 

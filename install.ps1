@@ -444,44 +444,8 @@ try {
 $volume = $config.volume
 if (-not $volume) { $volume = 0.5 }
 
-# Use Start-Job for async playback to avoid blocking Claude Code
-$null = Start-Job -ArgumentList $soundPath, $volume -ScriptBlock {
-    param($path, $vol)
-    try {
-        Add-Type -AssemblyName PresentationCore
-        $player = New-Object System.Windows.Media.MediaPlayer
-        $fullPath = (Resolve-Path $path).Path
-        $player.Open([Uri]::new("file:///$($fullPath -replace '\\','/')"))
-        $player.Volume = $vol
-        Start-Sleep -Milliseconds 150
-        $player.Play()
-        # Wait for playback to start
-        $timeout = 50
-        while ($timeout -gt 0 -and $player.Position.TotalMilliseconds -eq 0) {
-            Start-Sleep -Milliseconds 100
-            $timeout--
-        }
-        if ($player.NaturalDuration.HasTimeSpan) {
-            $remaining = $player.NaturalDuration.TimeSpan.TotalMilliseconds - $player.Position.TotalMilliseconds
-            if ($remaining -gt 0 -and $remaining -lt 5000) {
-                Start-Sleep -Milliseconds ([int]$remaining + 100)
-            }
-        } else {
-            Start-Sleep -Seconds 2
-        }
-        $player.Close()
-    } catch {
-        # Fallback: use SoundPlayer for WAV files (async)
-        try {
-            if ($path -match "\.wav$") {
-                $sp = New-Object System.Media.SoundPlayer $path
-                $sp.Play()  # Play() is async, PlaySync() blocks
-                Start-Sleep -Seconds 2
-                $sp.Dispose()
-            }
-        } catch {}
-    }
-}
+$scriptPath = Join-Path $InstallDir "scripts\win-play.ps1"
+$null = Start-Process -WindowStyle Hidden -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$scriptPath,"-path",$soundPath,"-vol",$volume
 
 exit 0
 '@
@@ -599,6 +563,15 @@ if (Test-Path $skillsSourceDir) {
     Write-Host "  Skills directory not found, skipping" -ForegroundColor Yellow
 }
 
+# --- Install scripts ---
+$scriptsSourceDir = Join-Path $PSScriptRoot "scripts"
+$scriptsTargetDir = Join-Path $InstallDir "scripts"
+
+if (Test-Path $scriptsSourceDir) {
+    New-Item -ItemType Directory -Path $scriptsTargetDir -Force | Out-Null
+    Copy-Item -Path "$scriptsSourceDir\*.ps1" -Destination $scriptsTargetDir -Force
+}
+
 # --- Test sound ---
 Write-Host ""
 Write-Host "Testing sound..."
@@ -613,19 +586,17 @@ $testPackDir = Join-Path $InstallDir "packs\$testPack\sounds"
 $testSound = Get-ChildItem -Path $testPackDir -File -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if ($testSound) {
-    try {
-        Add-Type -AssemblyName PresentationCore
-        $player = New-Object System.Windows.Media.MediaPlayer
-        $fullPath = $testSound.FullName
-        $player.Open([Uri]::new("file:///$($fullPath -replace '\\','/')"))
-        $player.Volume = 0.3
-        Start-Sleep -Milliseconds 200
-        $player.Play()
-        Start-Sleep -Seconds 3
-        $player.Close()
-        Write-Host "  Sound working!" -ForegroundColor Green
-    } catch {
-        Write-Host "  Warning: Sound playback failed: $_" -ForegroundColor Yellow
+    $testScriptPath = Join-Path $InstallDir "scripts\win-play.ps1"
+    if (Test-Path $testScriptPath) {
+        try {
+            $proc = Start-Process -WindowStyle Hidden -FilePath "powershell.exe" -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File",$testScriptPath,"-path",$testSound.FullName,"-vol",0.3 -PassThru
+            Start-Sleep -Seconds 3
+            Write-Host "  Sound working!" -ForegroundColor Green
+        } catch {
+            Write-Host "  Warning: Sound playback failed: $_" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "  Warning: win-play.ps1 not found" -ForegroundColor Yellow
     }
 } else {
     Write-Host "  Warning: No sound files found for pack '$testPack'" -ForegroundColor Yellow

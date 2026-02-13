@@ -3,7 +3,8 @@
 # Usage: powershell -ExecutionPolicy Bypass -File uninstall.ps1
 
 param(
-    [switch]$KeepSounds
+    [switch]$KeepSounds,
+    [switch]$Force
 )
 
 $ErrorActionPreference = "Stop"
@@ -131,7 +132,7 @@ if (Test-Path $InstallDir) {
         }
 
         Write-Host "Removing installation directory..."
-        if ($packCount -gt 0) {
+        if ($packCount -gt 0 -and -not $Force) {
             Write-Host "  This will delete $packCount pack(s) ($soundCount sounds)" -ForegroundColor Yellow
             Write-Host "  Location: $InstallDir" -ForegroundColor DarkGray
             Write-Host ""

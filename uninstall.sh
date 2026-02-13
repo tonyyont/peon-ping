@@ -116,14 +116,16 @@ if [ -f "$FISH_COMPLETIONS" ]; then
   echo "Removed fish completions"
 fi
 
-# --- Remove skill directory ---
-SKILL_DIR="$BASE_DIR/skills/peon-ping-toggle"
-if [ -d "$SKILL_DIR" ]; then
-  echo ""
-  echo "Removing $SKILL_DIR..."
-  rm -rf "$SKILL_DIR"
-  echo "Removed skill"
-fi
+# --- Remove skill directories ---
+for SKILL_NAME in peon-ping-toggle peon-ping-config; do
+  SKILL_DIR="$BASE_DIR/skills/$SKILL_NAME"
+  if [ -d "$SKILL_DIR" ]; then
+    echo ""
+    echo "Removing $SKILL_DIR..."
+    rm -rf "$SKILL_DIR"
+    echo "Removed $SKILL_NAME skill"
+  fi
+done
 
 # --- Remove install directory ---
 if [ -d "$INSTALL_DIR" ]; then

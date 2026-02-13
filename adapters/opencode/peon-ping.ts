@@ -484,15 +484,13 @@ function detectTerminalNotifier(): string | null {
 
 /**
  * Resolve the peon-ping icon path for notifications.
- * Checks Homebrew libexec, then Claude hooks dir, then pack dir.
+ * Checks Homebrew libexec, then OpenCode plugin dir.
  */
 function resolveIconPath(): string | null {
   const candidates = [
     // Homebrew-installed icon (via formula)
     "/opt/homebrew/opt/peon-ping/libexec/docs/peon-icon.png",
     "/usr/local/opt/peon-ping/libexec/docs/peon-icon.png",
-    // Claude hooks install
-    path.join(os.homedir(), ".claude", "hooks", "peon-ping", "docs", "peon-icon.png"),
     // Plugin dir
     path.join(PLUGIN_DIR, "peon-icon.png"),
   ]

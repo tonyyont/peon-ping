@@ -24,7 +24,6 @@ BREW_PREFIX="$(brew --prefix 2>/dev/null || echo "")"
 for path in \
   "${BREW_PREFIX:+$BREW_PREFIX/lib/peon-ping/docs/peon-icon.png}" \
   "$HOME/.config/opencode/peon-ping/peon-icon.png" \
-  "$HOME/.claude/hooks/peon-ping/docs/peon-icon.png" \
   "$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd)/docs/peon-icon.png"; do
   [ -n "$path" ] && [ -f "$path" ] && ICON="$path" && break
 done

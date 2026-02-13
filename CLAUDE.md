@@ -15,11 +15,20 @@ bats tests/install.bats
 # Run a specific test by name
 bats tests/peon.bats -f "SessionStart plays a greeting sound"
 
-# Install locally for development
+# Install locally for development (Unix/WSL2)
 bash install.sh --local
 
-# Install only specific packs
+# Install only specific packs (Unix/WSL2)
 bash install.sh --packs=peon,glados,peasant
+
+# Install locally for development (native Windows)
+powershell -ExecutionPolicy Bypass -File install.ps1
+
+# Install specific packs (native Windows)
+powershell -ExecutionPolicy Bypass -File install.ps1 -Packs peon,glados,peasant
+
+# Install all packs (native Windows)
+powershell -ExecutionPolicy Bypass -File install.ps1 -All
 ```
 
 There is no build step, linter, or formatter configured for the shell codebase.
@@ -42,9 +51,12 @@ peon-ping is part of the [PeonPing](https://github.com/PeonPing) org:
 
 ### Core Files
 
-- **`peon.sh`** — Main hook script. Receives JSON event data on stdin, routes events via an embedded Python block that handles config loading, event parsing, sound selection, and state management in a single invocation. Shell code then handles async audio playback (`nohup` + background processes), desktop notifications, and mobile push notifications.
+- **`peon.sh`** — Main hook script (Unix/WSL2). Receives JSON event data on stdin, routes events via an embedded Python block that handles config loading, event parsing, sound selection, and state management in a single invocation. Shell code then handles async audio playback (`nohup` + background processes), desktop notifications, and mobile push notifications.
+- **`peon.ps1`** — Main hook script (native Windows). Pure PowerShell implementation with same event flow as `peon.sh` but without Python dependency. Handles JSON parsing, config/state management, CESP category mapping, sound selection (no-repeat logic), and async audio playback via `win-play.ps1`.
 - **`relay.sh`** — HTTP relay server for SSH/devcontainer/Codespaces. Runs on the local machine, receives audio and notification requests from remote sessions.
-- **`install.sh`** — Installer. Fetches pack registry from GitHub Pages, downloads selected packs, registers hooks in `~/.claude/settings.json`. Falls back to a hardcoded pack list if registry is unreachable.
+- **`install.sh`** — Installer (Unix/WSL2). Fetches pack registry from GitHub Pages, downloads selected packs, registers hooks in `~/.claude/settings.json`. Falls back to a hardcoded pack list if registry is unreachable.
+- **`install.ps1`** — Installer (native Windows). PowerShell version with registry fetching, pack downloads, hook registration, CLI shortcut creation (`peon.cmd` in `~/.local/bin`), and skills installation. Supports `-Packs` param for selective installs and `-All` for full registry.
+- **`scripts/win-play.ps1`** — Windows audio playback backend. Async MP3/WAV player using `MediaPlayer` class with volume control.
 - **`config.json`** — Default configuration template.
 
 ### Event Flow
@@ -65,7 +77,9 @@ IDE triggers hook → `peon.sh` reads JSON stdin → single Python call maps eve
 - **`adapters/cursor.sh`** — Translates Cursor events to CESP JSON
 - **`adapters/opencode.sh`** — Installer for OpenCode adapter
 - **`adapters/opencode/peon-ping.ts`** — Full TypeScript CESP plugin for OpenCode IDE
+- **`adapters/kilo.sh`** — Installer for Kilo CLI adapter (downloads and patches the OpenCode plugin)
 - **`adapters/kiro.sh`** — Translates Kiro CLI (Amazon) events to CESP JSON
+- **`adapters/windsurf.sh`** — Translates Windsurf Cascade hook events to CESP JSON
 - **`adapters/antigravity.sh`** — Filesystem watcher for Google Antigravity agent events
 
 All adapters translate IDE-specific events into the standardized CESP JSON format that `peon.sh` expects.
@@ -73,7 +87,8 @@ All adapters translate IDE-specific events into the standardized CESP JSON forma
 ### Platform Audio Backends
 
 - **macOS:** `afplay`
-- **WSL2:** PowerShell `MediaPlayer`
+- **WSL2:** PowerShell `MediaPlayer` (via `peon.sh` cross-platform detection)
+- **Native Windows:** PowerShell `MediaPlayer` (via `scripts/win-play.ps1`)
 - **Linux:** priority chain: `pw-play` → `paplay` → `ffplay` → `mpv` → `play` (SoX) → `aplay` (each with different volume scaling)
 - **SSH/devcontainer:** HTTP relay to local machine (see `relay.sh`)
 
@@ -90,6 +105,27 @@ Packs use `openpeon.json` ([CESP v1.0](https://github.com/PeonPing/openpeon)) ma
 Tests use [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing System). Test setup (`tests/setup.bash`) creates isolated temp directories with mock audio backends, manifests, and config so tests never touch real state. Key mock: `afplay` is replaced with a script that logs calls instead of playing audio.
 
 CI runs on macOS (`macos-latest`) via GitHub Actions.
+
+## Releasing
+
+After merging PRs that add features, fix bugs, or make notable changes, **proactively suggest a version bump**. Don't wait to be asked.
+
+**When to bump:**
+- **Patch** (1.8.1): bug fixes, small tweaks, test-only changes
+- **Minor** (1.9.0): new features, new adapters, new platform support
+- **Major** (2.0.0): breaking changes to config, hooks, or CLI
+
+**Release checklist:**
+1. Run `bats tests/` — all tests must pass
+2. Update `CHANGELOG.md` — add new section at top with version, date, and categorized changes (Added/Fixed/Breaking)
+3. Bump `VERSION` file
+4. Commit: `git commit -m "chore: bump version to X.Y.Z"`
+5. Tag: `git tag vX.Y.Z`
+6. Push: `git push && git push --tags`
+
+The tag push triggers CI to create a GitHub Release and auto-update the Homebrew tap.
+
+See [RELEASING.md](RELEASING.md) for full details.
 
 ## Skills
 

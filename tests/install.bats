@@ -177,21 +177,19 @@ print('OK')
   [ -f "$LOCAL_INSTALL_DIR/packs/peon/openpeon.json" ]
 }
 
-@test "--local registers hooks in project settings.json" {
+@test "--local registers hooks in global settings.json" {
   cd "$PROJECT_DIR"
   bash "$CLONE_DIR/install.sh" --local
-  [ -f "$PROJECT_DIR/.claude/settings.json" ]
+  # Hooks are always written to global settings (HOME/.claude/settings.json)
+  [ -f "$TEST_HOME/.claude/settings.json" ]
   /usr/bin/python3 -c "
 import json
-s = json.load(open('$PROJECT_DIR/.claude/settings.json'))
+s = json.load(open('$TEST_HOME/.claude/settings.json'))
 hooks = s.get('hooks', {})
 for event in ['SessionStart', 'UserPromptSubmit', 'Stop', 'Notification', 'PermissionRequest']:
     assert event in hooks, f'{event} not in hooks'
     found = any('peon.sh' in h.get('command','') for entry in hooks[event] for h in entry.get('hooks',[]))
     assert found, f'peon.sh not registered for {event}'
-# Verify relative path (not absolute)
-cmd = hooks['SessionStart'][0]['hooks'][0]['command']
-assert cmd == '.claude/hooks/peon-ping/peon.sh', f'Expected relative path, got: {cmd}'
 print('OK')
 "
 }
@@ -210,16 +208,17 @@ print('OK')
   cd "$PROJECT_DIR"
   bash "$CLONE_DIR/install.sh" --local
   [ -f "$LOCAL_INSTALL_DIR/peon.sh" ]
-  [ -f "$PROJECT_DIR/.claude/settings.json" ]
+  # Hooks are in global settings
+  [ -f "$TEST_HOME/.claude/settings.json" ]
   [ -d "$PROJECT_DIR/.claude/skills/peon-ping-toggle" ]
 
   # Run uninstall (non-interactive — no notify.sh restore prompt for local)
   bash "$LOCAL_INSTALL_DIR/uninstall.sh"
 
-  # Hook entries removed from settings.json
+  # Hook entries removed from global settings.json
   /usr/bin/python3 -c "
 import json
-s = json.load(open('$PROJECT_DIR/.claude/settings.json'))
+s = json.load(open('$TEST_HOME/.claude/settings.json'))
 hooks = s.get('hooks', {})
 for event, entries in hooks.items():
     for entry in entries:

@@ -86,9 +86,9 @@ play_linux_sound() {
     pw-play)
       # pw-play (PipeWire) expects volume as float 0.0-1.0 (unlike paplay 0-65536, ffplay/mpv 0-100)
       if [ "$use_bg" = true ]; then
-        nohup pw-play --volume "$vol" "$file" >/dev/null 2>&1 &
+        nohup env LC_ALL=C pw-play --volume "$vol" "$file" >/dev/null 2>&1 &
       else
-        pw-play --volume "$vol" "$file" >/dev/null 2>&1
+        LC_ALL=C pw-play --volume "$vol" "$file" >/dev/null 2>&1
       fi
       ;;
     paplay)
@@ -158,8 +158,12 @@ play_sound() {
   kill_previous_sound
   case "$PLATFORM" in
     mac)
-      nohup afplay -v "$vol" "$file" >/dev/null 2>&1 &
-      save_sound_pid $!
+      if [ "${PEON_TEST:-0}" = "1" ]; then
+        afplay -v "$vol" "$file" >/dev/null 2>&1
+      else
+        nohup afplay -v "$vol" "$file" >/dev/null 2>&1 &
+        save_sound_pid $!
+      fi
       ;;
     wsl)
       local tmpdir tmpfile
@@ -389,7 +393,7 @@ q = shlex.quote
 try:
     cfg = json.load(open('$config'))
     mn = cfg.get('mobile_notify', {})
-except:
+except Exception:
     mn = {}
 if not mn or not mn.get('enabled', True):
     print('MOBILE_SERVICE=')
@@ -417,19 +421,33 @@ print('MOBILE_BOT_TOKEN=' + q(mn.get('bot_token', '')))
     blue) priority="low" ;;
   esac
 
+  # Synchronous mode for tests (avoid race with backgrounded curl)
+  local use_bg=true
+  [ "${PEON_TEST:-0}" = "1" ] && use_bg=false
+
   case "$MOBILE_SERVICE" in
     ntfy)
       [ -z "$MOBILE_TOPIC" ] && return 0
       local ntfy_url="${MOBILE_SERVER}/${MOBILE_TOPIC}"
       local auth_header=""
       [ -n "$MOBILE_TOKEN" ] && auth_header="-H \"Authorization: Bearer ${MOBILE_TOKEN}\""
-      nohup curl -sf \
-        -H "Title: $title" \
-        -H "Priority: $priority" \
-        -H "Tags: video_game" \
-        $auth_header \
-        -d "$msg" \
-        "$ntfy_url" >/dev/null 2>&1 &
+      if [ "$use_bg" = true ]; then
+        nohup curl -sf \
+          -H "Title: $title" \
+          -H "Priority: $priority" \
+          -H "Tags: video_game" \
+          $auth_header \
+          -d "$msg" \
+          "$ntfy_url" >/dev/null 2>&1 &
+      else
+        curl -sf \
+          -H "Title: $title" \
+          -H "Priority: $priority" \
+          -H "Tags: video_game" \
+          $auth_header \
+          -d "$msg" \
+          "$ntfy_url" >/dev/null 2>&1
+      fi
       ;;
     pushover)
       [ -z "$MOBILE_USER_KEY" ] || [ -z "$MOBILE_APP_TOKEN" ] && return 0
@@ -438,19 +456,36 @@ print('MOBILE_BOT_TOKEN=' + q(mn.get('bot_token', '')))
         high) po_priority=1 ;;
         low) po_priority=-1 ;;
       esac
-      nohup curl -sf \
-        -d "token=${MOBILE_APP_TOKEN}" \
-        -d "user=${MOBILE_USER_KEY}" \
-        -d "title=${title}" \
-        -d "message=${msg}" \
-        -d "priority=${po_priority}" \
-        "https://api.pushover.net/1/messages.json" >/dev/null 2>&1 &
+      if [ "$use_bg" = true ]; then
+        nohup curl -sf \
+          -d "token=${MOBILE_APP_TOKEN}" \
+          -d "user=${MOBILE_USER_KEY}" \
+          -d "title=${title}" \
+          -d "message=${msg}" \
+          -d "priority=${po_priority}" \
+          "https://api.pushover.net/1/messages.json" >/dev/null 2>&1 &
+      else
+        curl -sf \
+          -d "token=${MOBILE_APP_TOKEN}" \
+          -d "user=${MOBILE_USER_KEY}" \
+          -d "title=${title}" \
+          -d "message=${msg}" \
+          -d "priority=${po_priority}" \
+          "https://api.pushover.net/1/messages.json" >/dev/null 2>&1
+      fi
       ;;
     telegram)
       [ -z "$MOBILE_BOT_TOKEN" ] || [ -z "$MOBILE_CHAT_ID" ] && return 0
       local tg_text="${title}%0A${msg}"
-      nohup curl -sf \
-        "https://api.telegram.org/bot${MOBILE_BOT_TOKEN}/sendMessage?chat_id=${MOBILE_CHAT_ID}&text=${tg_text}" >/dev/null 2>&1 &
+      if [ "$use_bg" = true ]; then
+        nohup curl -sf "https://api.telegram.org/bot$MOBILE_BOT_TOKEN/sendMessage" \
+          -d "chat_id=$MOBILE_CHAT_ID" \
+          -d "text=${tg_text}" >/dev/null 2>&1 &
+      else
+        curl -sf "https://api.telegram.org/bot$MOBILE_BOT_TOKEN/sendMessage" \
+          -d "chat_id=$MOBILE_CHAT_ID" \
+          -d "text=${tg_text}" >/dev/null 2>&1
+      fi
       ;;
   esac
 }
@@ -479,7 +514,7 @@ try:
         print(f'peon-ping: mobile notifications ' + ('on' if enabled else 'off') + f' ({svc})')
     else:
         print('peon-ping: mobile notifications not configured')
-except:
+except Exception:
     print('peon-ping: desktop notifications on')
     print('peon-ping: mobile notifications not configured')
 "
@@ -492,7 +527,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 cfg['desktop_notifications'] = True
 json.dump(cfg, open(config_path, 'w'), indent=2)
@@ -505,7 +540,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 cfg['desktop_notifications'] = False
 json.dump(cfg, open(config_path, 'w'), indent=2)
@@ -523,7 +558,7 @@ import json, os, glob
 config_path = '$CONFIG'
 try:
     active = json.load(open(config_path)).get('active_pack', 'peon')
-except:
+except Exception:
     active = 'peon'
 packs_dir = '$PEON_DIR/packs'
 for d in sorted(os.listdir(packs_dir)):
@@ -543,10 +578,10 @@ for d in sorted(os.listdir(packs_dir)):
         if [ -z "$PACK_ARG" ]; then
           echo "Usage: peon packs use <name>" >&2; exit 1
         fi
-        python3 -c "
+        PACK_ARG="$PACK_ARG" python3 -c "
 import json, os, glob, sys
 config_path = '$CONFIG'
-pack_arg = '$PACK_ARG'
+pack_arg = os.environ.get('PACK_ARG', '')
 packs_dir = '$PEON_DIR/packs'
 names = sorted([
     d for d in os.listdir(packs_dir)
@@ -561,7 +596,7 @@ if pack_arg not in names:
     sys.exit(1)
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 cfg['active_pack'] = pack_arg
 json.dump(cfg, open(config_path, 'w'), indent=2)
@@ -580,7 +615,7 @@ import json, os, glob
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 active = cfg.get('active_pack', 'peon')
 packs_dir = '$PEON_DIR/packs'
@@ -613,17 +648,17 @@ print(f'peon-ping: switched to {next_pack} ({display})')
       remove)
         REMOVE_ARG="${3:-}"
         if [ -n "$REMOVE_ARG" ]; then
-          PACKS_TO_REMOVE=$(python3 -c "
+          PACKS_TO_REMOVE=$(REMOVE_ARG="$REMOVE_ARG" python3 -c "
 import json, os, sys
 
 config_path = '$CONFIG'
 peon_dir = '$PEON_DIR'
 packs_dir = os.path.join(peon_dir, 'packs')
-remove_arg = '$REMOVE_ARG'
+remove_arg = os.environ.get('REMOVE_ARG', '')
 
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 active = cfg.get('active_pack', 'peon')
 
@@ -695,7 +730,7 @@ for pack in to_remove:
 # Clean pack_rotation in config
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 rotation = cfg.get('pack_rotation', [])
 if rotation:
@@ -732,7 +767,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 cfg['mobile_notify'] = {
     'enabled': True,
@@ -765,7 +800,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 cfg['mobile_notify'] = {
     'enabled': True,
@@ -789,7 +824,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 cfg['mobile_notify'] = {
     'enabled': True,
@@ -807,7 +842,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 mn = cfg.get('mobile_notify', {})
 mn['enabled'] = False
@@ -822,7 +857,7 @@ import json
 config_path = '$CONFIG'
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 mn = cfg.get('mobile_notify', {})
 if not mn.get('service'):
@@ -840,7 +875,7 @@ import json
 try:
     cfg = json.load(open('$CONFIG'))
     mn = cfg.get('mobile_notify', {})
-except:
+except Exception:
     mn = {}
 if not mn or not mn.get('service'):
     print('peon-ping: mobile notifications not configured')
@@ -865,7 +900,7 @@ import json, sys
 try:
     cfg = json.load(open('$CONFIG'))
     mn = cfg.get('mobile_notify', {})
-except:
+except Exception:
     mn = {}
 if not mn or not mn.get('service') or not mn.get('enabled', True):
     print('peon-ping: mobile notifications not configured or disabled')
@@ -916,7 +951,7 @@ config_path = '$CONFIG'
 
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 active_pack = cfg.get('active_pack', 'peon')
 
@@ -956,7 +991,7 @@ config_path = '$CONFIG'
 # Load config
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 volume = cfg.get('volume', 0.5)
 active_pack = cfg.get('active_pack', 'peon')
@@ -1116,7 +1151,7 @@ state_dirty = False
 # --- Load config ---
 try:
     cfg = json.load(open(config_path))
-except:
+except Exception:
     cfg = {}
 
 if str(cfg.get('enabled', True)).lower() == 'false':
@@ -1166,7 +1201,7 @@ perm_mode = event_data.get('permission_mode', '')
 # --- Load state ---
 try:
     state = json.load(open(state_file))
-except:
+except Exception:
     state = {}
 
 # --- Agent detection ---
@@ -1341,7 +1376,7 @@ if category and not paused:
             pack_root = os.path.realpath(pack_dir) + os.sep
             if candidate.startswith(pack_root):
                 sound_file = candidate
-    except:
+    except Exception:
         pass
 
 # --- Write state once ---

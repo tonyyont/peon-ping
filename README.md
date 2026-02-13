@@ -2,11 +2,11 @@
 
 ![macOS](https://img.shields.io/badge/macOS-blue) ![WSL2](https://img.shields.io/badge/WSL2-blue) ![Linux](https://img.shields.io/badge/Linux-blue) ![SSH](https://img.shields.io/badge/SSH-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Claude Code](https://img.shields.io/badge/Claude_Code-hook-ffab01) ![Codex](https://img.shields.io/badge/Codex-adapter-ffab01) ![Cursor](https://img.shields.io/badge/Cursor-adapter-ffab01) ![OpenCode](https://img.shields.io/badge/OpenCode-adapter-ffab01) ![Kiro](https://img.shields.io/badge/Kiro-adapter-ffab01) ![Antigravity](https://img.shields.io/badge/Antigravity-adapter-ffab01)
+![Claude Code](https://img.shields.io/badge/Claude_Code-hook-ffab01) ![Codex](https://img.shields.io/badge/Codex-adapter-ffab01) ![Cursor](https://img.shields.io/badge/Cursor-adapter-ffab01) ![OpenCode](https://img.shields.io/badge/OpenCode-adapter-ffab01) ![Kilo CLI](https://img.shields.io/badge/Kilo_CLI-adapter-ffab01) ![Kiro](https://img.shields.io/badge/Kiro-adapter-ffab01) ![Windsurf](https://img.shields.io/badge/Windsurf-adapter-ffab01) ![Antigravity](https://img.shields.io/badge/Antigravity-adapter-ffab01)
 
 **Game character voice lines when your AI coding agent needs attention.**
 
-AI coding agents don't notify you when they finish or need permission. You tab away, lose focus, and waste 15 minutes getting back into flow. peon-ping fixes this with voice lines from Warcraft, StarCraft, Portal, Zelda, and more — works with **Claude Code**, **Codex**, **Cursor**, **OpenCode**, **Kiro**, and **Google Antigravity**.
+AI coding agents don't notify you when they finish or need permission. You tab away, lose focus, and waste 15 minutes getting back into flow. peon-ping fixes this with voice lines from Warcraft, StarCraft, Portal, Zelda, and more — works with **Claude Code**, **Codex**, **Cursor**, **OpenCode**, **Kilo CLI**, **Kiro**, **Windsurf**, and **Google Antigravity**.
 
 **See it in action** &rarr; [peonping.com](https://peonping.com/)
 
@@ -25,6 +25,13 @@ Then run `peon-ping-setup` to register hooks and download sound packs. macOS and
 ```bash
 curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash
 ```
+
+### Option 3: Installer for windows
+
+```powershell
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.ps1" -UseBasicParsing | Invoke-Expression
+```
+
 
 Installs 10 curated English packs by default. Re-run to update while preserving config/state. Or **[pick your packs interactively at peonping.com](https://peonping.com/#picker)** and get a custom install command.
 
@@ -147,7 +154,9 @@ peon-ping works with any agentic IDE that supports hooks. Adapters translate IDE
 | **OpenAI Codex** | Adapter | Add `notify = ["bash", "/absolute/path/to/.claude/hooks/peon-ping/adapters/codex.sh"]` to `~/.codex/config.toml` |
 | **Cursor** | Adapter | Add hook entries to `~/.cursor/hooks.json` pointing to `adapters/cursor.sh` |
 | **OpenCode** | Adapter | `curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode.sh \| bash` ([setup](#opencode-setup)) |
+| **Kilo CLI** | Adapter | `curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/kilo.sh \| bash` ([setup](#kilo-cli-setup)) |
 | **Kiro** | Adapter | Add hook entries to `~/.kiro/agents/peon-ping.json` pointing to `adapters/kiro.sh` ([setup](#kiro-setup)) |
+| **Windsurf** | Adapter | Add hook entries to `~/.codeium/windsurf/hooks.json` pointing to `adapters/windsurf.sh` ([setup](#windsurf-setup)) |
 | **Google Antigravity** | Adapter | `bash ~/.claude/hooks/peon-ping/adapters/antigravity.sh` (requires `fswatch`: `brew install fswatch`) |
 
 ### OpenCode setup
@@ -202,6 +211,43 @@ The script auto-finds the peon icon (Homebrew libexec, OpenCode config, or Claud
 > **Future:** When [jamf/Notifier](https://github.com/jamf/Notifier) ships to Homebrew ([#32](https://github.com/jamf/Notifier/issues/32)), the plugin will migrate to it — Notifier has built-in `--rebrand` support, no icon hacks needed.
 
 </details>
+
+### Kilo CLI setup
+
+A native TypeScript plugin for [Kilo CLI](https://github.com/kilocode/cli) with full [CESP v1.0](https://github.com/PeonPing/openpeon) conformance. Kilo CLI is a fork of OpenCode and uses the same plugin system — this installer downloads the OpenCode plugin and patches it for Kilo.
+
+**Quick install:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/kilo.sh | bash
+```
+
+The installer copies `peon-ping.ts` to `~/.config/kilo/plugins/` and creates a config at `~/.config/kilo/peon-ping/config.json`. Packs are stored at the shared CESP path (`~/.openpeon/packs/`).
+
+**Features:** Same as the [OpenCode adapter](#opencode-setup) — sound playback, CESP event mapping, desktop notifications, terminal focus detection, tab titles, pack switching, no-repeat logic, and spam detection.
+
+### Windsurf setup
+
+Add to `~/.codeium/windsurf/hooks.json` (user-level) or `.windsurf/hooks.json` (workspace-level):
+
+```json
+{
+  "hooks": {
+    "post_cascade_response": [
+      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh post_cascade_response", "show_output": false }
+    ],
+    "pre_user_prompt": [
+      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh pre_user_prompt", "show_output": false }
+    ],
+    "post_write_code": [
+      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh post_write_code", "show_output": false }
+    ],
+    "post_run_command": [
+      { "command": "bash ~/.claude/hooks/peon-ping/adapters/windsurf.sh post_run_command", "show_output": false }
+    ]
+  }
+}
+```
 
 ### Kiro setup
 
@@ -326,16 +372,28 @@ Want to add your own pack? See the [full guide at openpeon.com/create](https://o
 
 ## Uninstall
 
+**macOS/Linux:**
+
 ```bash
 bash "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/hooks/peon-ping/uninstall.sh        # global
 bash .claude/hooks/peon-ping/uninstall.sh           # project-local
 ```
 
+**Windows (PowerShell):**
+
+```powershell
+# Standard uninstall (prompts before deleting sounds)
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\peon-ping\uninstall.ps1"
+
+# Keep sound packs (removes everything else)
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.claude\hooks\peon-ping\uninstall.ps1" -KeepSounds
+```
+
 ## Requirements
 
-- macOS (uses `afplay` and AppleScript), WSL2 (uses PowerShell `MediaPlayer` and WinForms), or Linux (uses `pw-play`/`paplay`/`ffplay`/`mpv`/`aplay` and `notify-send`)
+- macOS (uses `afplay` and AppleScript), Windows (native PowerShell or WSL2, uses PowerShell `MediaPlayer` and WinForms), or Linux (uses `pw-play`/`paplay`/`ffplay`/`mpv`/`aplay` and `notify-send`)
 - Claude Code with hooks support
-- python3
+- python3 (not required for native Windows)
 - For SSH/remote: `curl` on the remote host
 
 ## How it works

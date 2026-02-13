@@ -1,18 +1,19 @@
 #!/bin/bash
-# peon-ping adapter for OpenCode
-# Installs the peon-ping CESP v1.0 TypeScript plugin for OpenCode
+# peon-ping adapter for Kilo CLI
+# Installs the peon-ping CESP v1.0 TypeScript plugin for Kilo CLI
 #
-# OpenCode uses a TypeScript plugin system (not shell hooks), so this
-# adapter is an install script rather than a runtime event translator.
+# Kilo CLI is a fork of OpenCode and uses the same TypeScript plugin system.
+# This installer downloads the OpenCode plugin and patches the import path
+# and config directories for Kilo.
 #
 # Install:
-#   bash adapters/opencode.sh
+#   bash adapters/kilo.sh
 #
 # Or directly:
-#   curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/kilo.sh | bash
 #
 # Uninstall:
-#   bash adapters/opencode.sh --uninstall
+#   bash adapters/kilo.sh --uninstall
 
 set -euo pipefail
 
@@ -21,8 +22,8 @@ PLUGIN_URL="https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/o
 REGISTRY_URL="https://peonping.github.io/registry/index.json"
 DEFAULT_PACK="peon"
 
-OPENCODE_PLUGINS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/plugins"
-PEON_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/peon-ping"
+KILO_PLUGINS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kilo/plugins"
+PEON_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kilo/peon-ping"
 PACKS_DIR="$HOME/.openpeon/packs"
 
 is_safe_source_repo() {
@@ -46,8 +47,8 @@ error() { printf "%sx%s %s\n" "$RED" "$RESET" "$*" >&2; }
 
 # --- Uninstall ---
 if [ "${1:-}" = "--uninstall" ]; then
-  info "Uninstalling peon-ping from OpenCode..."
-  rm -f "$OPENCODE_PLUGINS_DIR/peon-ping.ts"
+  info "Uninstalling peon-ping from Kilo CLI..."
+  rm -f "$KILO_PLUGINS_DIR/peon-ping.ts"
   rm -rf "$PEON_CONFIG_DIR"
   info "Plugin and config removed."
   info "Sound packs in $PACKS_DIR were preserved (shared with other adapters)."
@@ -56,7 +57,7 @@ if [ "${1:-}" = "--uninstall" ]; then
 fi
 
 # --- Preflight ---
-info "Installing peon-ping for OpenCode..."
+info "Installing peon-ping for Kilo CLI..."
 
 if ! command -v curl &>/dev/null; then
   error "curl is required but not found."
@@ -87,15 +88,25 @@ case "$PLATFORM" in
 esac
 
 # --- Install plugin ---
-mkdir -p "$OPENCODE_PLUGINS_DIR"
+mkdir -p "$KILO_PLUGINS_DIR"
 
-# Remove existing file/symlink — curl -o can't write through a broken symlink
-# (e.g. leftover from Homebrew cellar path after an upgrade)
-rm -f "$OPENCODE_PLUGINS_DIR/peon-ping.ts"
-
-info "Downloading peon-ping.ts plugin..."
-curl -fsSL "$PLUGIN_URL" -o "$OPENCODE_PLUGINS_DIR/peon-ping.ts"
-info "Plugin installed to $OPENCODE_PLUGINS_DIR/peon-ping.ts"
+info "Downloading OpenCode plugin and patching for Kilo CLI..."
+curl -fsSL "$PLUGIN_URL" \
+  | sed \
+    -e 's|"@opencode-ai/plugin"|"@kilocode/plugin"|g' \
+    -e 's|".config", "opencode", "peon-ping"|".config", "kilo", "peon-ping"|g' \
+    -e 's|`oc-\${Date.now()}`|`kilo-${Date.now()}`|g' \
+    -e 's|) || "opencode"|) || "kilo"|g' \
+    -e 's|peon-ping for OpenCode|peon-ping for Kilo CLI|g' \
+    -e 's|A CESP.*player for OpenCode\.|A CESP (Coding Event Sound Pack Specification) player for Kilo CLI.|g' \
+    -e 's|Maps OpenCode events|Maps Kilo events|g' \
+    -e 's|~/.config/opencode/plugins/peon-ping.ts|~/.config/kilo/plugins/peon-ping.ts|g' \
+    -e 's|Restart OpenCode|Restart Kilo CLI|g' \
+    -e 's|OpenCode Event|Kilo Event|g' \
+    -e 's|OpenCode -> CESP|Kilo CLI -> CESP|g' \
+    -e 's|Return OpenCode event hooks|Return Kilo event hooks|g' \
+  > "$KILO_PLUGINS_DIR/peon-ping.ts"
+info "Plugin installed to $KILO_PLUGINS_DIR/peon-ping.ts"
 
 # --- Create default config ---
 mkdir -p "$PEON_CONFIG_DIR"
@@ -180,11 +191,11 @@ fi
 
 # --- Done ---
 echo ""
-info "${BOLD}peon-ping installed for OpenCode!${RESET}"
+info "${BOLD}peon-ping installed for Kilo CLI!${RESET}"
 echo ""
-printf "  %sPlugin:%s  %s\n" "$DIM" "$RESET" "$OPENCODE_PLUGINS_DIR/peon-ping.ts"
+printf "  %sPlugin:%s  %s\n" "$DIM" "$RESET" "$KILO_PLUGINS_DIR/peon-ping.ts"
 printf "  %sConfig:%s  %s\n" "$DIM" "$RESET" "$PEON_CONFIG_DIR/config.json"
 printf "  %sPacks:%s   %s\n" "$DIM" "$RESET" "$PACKS_DIR/"
 echo ""
-info "Restart OpenCode to activate. Your Peon awaits."
+info "Restart Kilo CLI to activate. Your Peon awaits."
 info "Install more packs: https://openpeon.com/packs"

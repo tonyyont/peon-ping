@@ -12,6 +12,10 @@ if [ "$BASE_DIR" = "$HOME/.claude" ]; then
   IS_LOCAL=false
 fi
 
+# Hooks are always written to global settings (install.sh design).
+# When uninstalling a local install, also clean hooks from global settings.
+GLOBAL_SETTINGS="$HOME/.claude/settings.json"
+
 NOTIFY_BACKUP="$BASE_DIR/hooks/notify.sh.backup"
 NOTIFY_SH="$BASE_DIR/hooks/notify.sh"
 
@@ -19,12 +23,14 @@ echo "=== peon-ping uninstaller ==="
 echo ""
 
 # --- Remove hook entries from settings.json ---
-if [ -f "$SETTINGS" ]; then
-  echo "Removing peon hooks from settings.json..."
+# Clean both local and global settings files (if they differ).
+_remove_peon_hooks() {
+  local target="$1"
+  [ -f "$target" ] || return 0
   python3 -c "
 import json, os
 
-settings_path = '$SETTINGS'
+settings_path = '$target'
 with open(settings_path) as f:
     settings = json.load(f)
 
@@ -58,6 +64,15 @@ if events_cleaned:
 else:
     print('No peon hooks found in settings.json')
 "
+}
+
+echo "Removing peon hooks from settings.json..."
+_remove_peon_hooks "$SETTINGS"
+
+# For local installs, hooks live in global settings — clean those too.
+if [ "$IS_LOCAL" = true ] && [ "$SETTINGS" != "$GLOBAL_SETTINGS" ]; then
+  echo "Removing peon hooks from global settings.json..."
+  _remove_peon_hooks "$GLOBAL_SETTINGS"
 fi
 
 # --- Restore notify.sh backup (global install only) ---

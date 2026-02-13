@@ -310,6 +310,7 @@ else
   curl -fsSL "$REPO_BASE/adapters/kiro.sh" -o "$INSTALL_DIR/adapters/kiro.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/antigravity.sh" -o "$INSTALL_DIR/adapters/antigravity.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/opencode.sh" -o "$INSTALL_DIR/adapters/opencode.sh" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/adapters/windsurf.sh" -o "$INSTALL_DIR/adapters/windsurf.sh" 2>/dev/null || true
   mkdir -p "$INSTALL_DIR/docs"
   curl -fsSL "$REPO_BASE/docs/peon-icon.png" -o "$INSTALL_DIR/docs/peon-icon.png" 2>/dev/null || true
   if [ "$UPDATING" = false ]; then

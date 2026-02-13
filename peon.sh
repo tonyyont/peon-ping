@@ -1443,5 +1443,4 @@ if [ -n "$NOTIFY" ] && [ "$PAUSED" != "true" ] && [ "${MOBILE_NOTIF:-false}" = "
   send_mobile_notification "$MSG" "$TITLE" "${NOTIFY_COLOR:-red}"
 fi
 
-wait
 exit 0

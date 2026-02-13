@@ -106,6 +106,27 @@ Tests use [BATS](https://github.com/bats-core/bats-core) (Bash Automated Testing
 
 CI runs on macOS (`macos-latest`) via GitHub Actions.
 
+## Releasing
+
+After merging PRs that add features, fix bugs, or make notable changes, **proactively suggest a version bump**. Don't wait to be asked.
+
+**When to bump:**
+- **Patch** (1.8.1): bug fixes, small tweaks, test-only changes
+- **Minor** (1.9.0): new features, new adapters, new platform support
+- **Major** (2.0.0): breaking changes to config, hooks, or CLI
+
+**Release checklist:**
+1. Run `bats tests/` — all tests must pass
+2. Update `CHANGELOG.md` — add new section at top with version, date, and categorized changes (Added/Fixed/Breaking)
+3. Bump `VERSION` file
+4. Commit: `git commit -m "chore: bump version to X.Y.Z"`
+5. Tag: `git tag vX.Y.Z`
+6. Push: `git push && git push --tags`
+
+The tag push triggers CI to create a GitHub Release and auto-update the Homebrew tap.
+
+See [RELEASING.md](RELEASING.md) for full details.
+
 ## Skills
 
 Two Claude Code skills live in `skills/`:

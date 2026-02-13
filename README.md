@@ -12,47 +12,49 @@ AI coding agents don't notify you when they finish or need permission. You tab a
 
 ## Install
 
+### Option 1: Homebrew (recommended)
+
 ```bash
 brew install PeonPing/tap/peon-ping
 ```
 
 Then run `peon-ping-setup` to register hooks and download sound packs. macOS and Linux.
 
-**Or install via curl** (macOS, Linux, WSL2):
+### Option 2: Installer script (macOS, Linux, WSL2)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash
 ```
 
-One command. Takes 10 seconds. Re-run to update (sounds and config preserved). Installs 10 curated English packs by default.
+Installs 10 curated English packs by default. Re-run to update while preserving config/state.
 
-**Install all packs** (every language and franchise):
+Useful installer flags:
+
+- `--all` — install all available packs
+- `--packs=peon,glados,...` — install specific packs only
+- `--local` — install into `./.claude/` for current project
+- `--global` — explicit global install (same as default)
+- `--init-local-config` — create `./.claude/hooks/peon-ping/config.json` only
+
+`--local` does not modify your shell rc files (no global `peon` alias/completion injection).
+
+Examples:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --all
-```
-
-**Project-local install** — installs into `.claude/` in the current project instead of `~/.claude/`:
-
-```bash
+curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --packs=peon,glados
 curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --local
 ```
 
-Local installs don't add the `peon` CLI alias or shell completions — use `/peon-ping-toggle` inside Claude Code instead.
+If a global install exists and you install local (or vice versa), the installer prompts you to remove the existing one to avoid conflicts.
 
-**Explicit global mode** (same as default):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --global
-```
-
-**Initialize local config only** (without reinstalling scripts):
+### Option 3: Clone and inspect first
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash -s -- --init-local-config
+git clone https://github.com/PeonPing/peon-ping.git
+cd peon-ping
+./install.sh
 ```
-
-If a global install exists and you install local (or vice versa), the installer will prompt to remove the existing one to avoid conflicts.
 
 ## What you'll hear
 
@@ -98,7 +100,10 @@ Pausing mutes sounds and desktop notifications instantly. Persists across sessio
 
 peon-ping installs a `/peon-ping-toggle` slash command in Claude Code. You can also just ask Claude to change settings for you — e.g. "enable round-robin pack rotation", "set volume to 0.3", or "add glados to my pack rotation". No need to edit config files manually.
 
-The config lives at `$CLAUDE_CONFIG_DIR/hooks/peon-ping/config.json` (default: `~/.claude/hooks/peon-ping/config.json`):
+Config location depends on install mode:
+
+- Global install: `$CLAUDE_CONFIG_DIR/hooks/peon-ping/config.json` (default `~/.claude/hooks/peon-ping/config.json`)
+- Local install: `./.claude/hooks/peon-ping/config.json`
 
 ```json
 {

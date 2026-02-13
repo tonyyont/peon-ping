@@ -72,18 +72,18 @@ if [ -z "$ICNS" ] || [ ! -f "$ICNS" ]; then
 fi
 
 # --- Generate .icns from PNG ---
-TMPDIR=$(mktemp -d)
-mkdir -p "$TMPDIR/peon.iconset"
+WORK=$(mktemp -d)
+mkdir -p "$WORK/peon.iconset"
 
 echo "Generating icon sizes..."
 for s in 16 32 64 128 256 512; do
-  sips -z $s $s "$ICON" --out "$TMPDIR/peon.iconset/icon_${s}x${s}.png" >/dev/null 2>&1
-  sips -z $((s*2)) $((s*2)) "$ICON" --out "$TMPDIR/peon.iconset/icon_${s}x${s}@2x.png" >/dev/null 2>&1
+  sips -z $s $s "$ICON" --out "$WORK/peon.iconset/icon_${s}x${s}.png" >/dev/null 2>&1
+  sips -z $((s*2)) $((s*2)) "$ICON" --out "$WORK/peon.iconset/icon_${s}x${s}@2x.png" >/dev/null 2>&1
 done
 
-if ! iconutil -c icns "$TMPDIR/peon.iconset" -o "$TMPDIR/peon.icns" 2>/dev/null; then
+if ! iconutil -c icns "$WORK/peon.iconset" -o "$WORK/peon.icns" 2>/dev/null; then
   echo "Error: iconutil failed to generate .icns"
-  rm -rf "$TMPDIR"
+  rm -rf "$WORK"
   exit 1
 fi
 
@@ -95,11 +95,11 @@ else
   echo "Backup already exists, skipping."
 fi
 
-cp "$TMPDIR/peon.icns" "$ICNS"
+cp "$WORK/peon.icns" "$ICNS"
 touch "$APP"
 
 # --- Clean up ---
-rm -rf "$TMPDIR"
+rm -rf "$WORK"
 
 echo ""
 echo "Peon icon applied to terminal-notifier!"

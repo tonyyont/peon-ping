@@ -999,10 +999,28 @@ for c in ['session.start','task.acknowledge','task.complete','task.error','input
 
 # --- Parse event JSON from stdin ---
 event_data = json.load(sys.stdin)
-event = event_data.get('hook_event_name', '')
+raw_event = event_data.get('hook_event_name', '')
+
+# Cursor IDE sends lowercase camelCase event names via its Third-party skills
+# (Claude Code compatibility) mode. Map them to the PascalCase names used below.
+# Claude Code's own PascalCase names pass through unchanged via dict.get fallback.
+_cursor_event_map = {
+    'sessionStart': 'SessionStart',
+    'sessionEnd': 'SessionStart',
+    'beforeSubmitPrompt': 'UserPromptSubmit',
+    'stop': 'Stop',
+    'preToolUse': 'UserPromptSubmit',
+    'postToolUse': 'Stop',
+    'subagentStop': 'Stop',
+    'preCompact': 'Stop',
+}
+event = _cursor_event_map.get(raw_event, raw_event)
+
 ntype = event_data.get('notification_type', '')
-cwd = event_data.get('cwd', '')
-session_id = event_data.get('session_id', '')
+# Cursor sends workspace_roots[] instead of cwd
+_roots = event_data.get('workspace_roots', [])
+cwd = event_data.get('cwd', '') or (_roots[0] if _roots else '')
+session_id = event_data.get('session_id', '') or event_data.get('conversation_id', '')
 perm_mode = event_data.get('permission_mode', '')
 
 # --- Load state ---

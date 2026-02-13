@@ -529,6 +529,27 @@ json.dump(c, open('$TEST_DIR/config.json', 'w'), indent=2)
   [[ "$output" == *"Sarah Kerrigan (StarCraft) *"* ]]
 }
 
+@test "packs list works when script is not in hooks dir (Homebrew install)" {
+  # Simulate Homebrew: script runs from a dir without packs, but hooks dir has them
+  FAKE_HOME="$(mktemp -d)"
+  HOOKS_DIR="$FAKE_HOME/.claude/hooks/peon-ping"
+  mkdir -p "$HOOKS_DIR/packs"
+  cp -R "$TEST_DIR/packs/peon" "$HOOKS_DIR/packs/"
+  cp "$TEST_DIR/config.json" "$HOOKS_DIR/config.json"
+  echo '{}' > "$HOOKS_DIR/.state.json"
+
+  # Unset CLAUDE_PEON_DIR so it falls back to BASH_SOURCE dirname → script dir (no packs)
+  # Set HOME to fake home so the fallback finds the hooks dir
+  unset CLAUDE_PEON_DIR
+  run env HOME="$FAKE_HOME" bash "$PEON_SH" packs list
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"peon"* ]]
+  [[ "$output" == *"Orc Peon"* ]]
+
+  rm -rf "$FAKE_HOME"
+  export CLAUDE_PEON_DIR="$TEST_DIR"
+}
+
 # ============================================================
 # packs use <name> (set specific pack)
 # ============================================================

@@ -13,7 +13,7 @@ bats tests/peon.bats
 bats tests/install.bats
 
 # Run a specific test by name
-bats tests/peon.bats -f "plays session.start sound"
+bats tests/peon.bats -f "SessionStart plays a greeting sound"
 
 # Install locally for development
 bash install.sh --local

@@ -168,13 +168,13 @@ if (-not $Updating) {
         pack_rotation = @()
         pack_rotation_mode = "random"
     } | ConvertTo-Json -Depth 3
-    Set-Content -Path $configPath -Value $config
+    Set-Content -Path $configPath -Value $config -Encoding UTF8
 }
 
 # --- Install state ---
 $statePath = Join-Path $InstallDir ".state.json"
 if (-not $Updating) {
-    Set-Content -Path $statePath -Value "{}"
+    Set-Content -Path $statePath -Value "{}" -Encoding UTF8
 }
 
 # --- Install helper scripts ---
@@ -222,7 +222,7 @@ if ($Command) {
             $newState = -not $cfg.enabled
             $raw = Get-Content $ConfigPath -Raw
             $raw = $raw -replace '"enabled"\s*:\s*(true|false)', "`"enabled`": $($newState.ToString().ToLower())"
-            Set-Content $ConfigPath -Value $raw
+            Set-Content $ConfigPath -Value $raw -Encoding UTF8
             $state = if ($newState) { "ENABLED" } else { "PAUSED" }
             Write-Host "peon-ping: $state" -ForegroundColor Cyan
             return
@@ -230,14 +230,14 @@ if ($Command) {
         "^--pause$" {
             $raw = Get-Content $ConfigPath -Raw
             $raw = $raw -replace '"enabled"\s*:\s*(true|false)', '"enabled": false'
-            Set-Content $ConfigPath -Value $raw
+            Set-Content $ConfigPath -Value $raw -Encoding UTF8
             Write-Host "peon-ping: PAUSED" -ForegroundColor Yellow
             return
         }
         "^--resume$" {
             $raw = Get-Content $ConfigPath -Raw
             $raw = $raw -replace '"enabled"\s*:\s*(true|false)', '"enabled": true'
-            Set-Content $ConfigPath -Value $raw
+            Set-Content $ConfigPath -Value $raw -Encoding UTF8
             Write-Host "peon-ping: ENABLED" -ForegroundColor Green
             return
         }
@@ -281,7 +281,7 @@ if ($Command) {
 
             $raw = Get-Content $ConfigPath -Raw
             $raw = $raw -replace '"active_pack"\s*:\s*"[^"]*"', "`"active_pack`": `"$newPack`""
-            Set-Content $ConfigPath -Value $raw
+            Set-Content $ConfigPath -Value $raw -Encoding UTF8
             Write-Host "peon-ping: switched to '$newPack'" -ForegroundColor Green
             return
         }
@@ -290,7 +290,7 @@ if ($Command) {
                 $vol = [math]::Max(0, [math]::Min(1, [double]$args[0]))
                 $raw = Get-Content $ConfigPath -Raw
                 $raw = $raw -replace '"volume"\s*:\s*[\d.]+', "`"volume`": $vol"
-                Set-Content $ConfigPath -Value $raw
+                Set-Content $ConfigPath -Value $raw -Encoding UTF8
                 Write-Host "peon-ping: volume set to $vol" -ForegroundColor Green
             } else {
                 Write-Host "Usage: peon --volume 0.5" -ForegroundColor Yellow
@@ -432,7 +432,7 @@ switch ($hookEvent) {
 
 # Save state
 try {
-    $state | ConvertTo-Json -Depth 3 | Set-Content $StatePath
+    $state | ConvertTo-Json -Depth 3 | Set-Content $StatePath -Encoding UTF8
 } catch {}
 
 if (-not $category) { exit 0 }
@@ -486,7 +486,7 @@ if (-not (Test-Path $soundPath)) { exit 0 }
 # Save last played
 $state[$lastKey] = $soundFile
 try {
-    $state | ConvertTo-Json -Depth 3 | Set-Content $StatePath
+    $state | ConvertTo-Json -Depth 3 | Set-Content $StatePath -Encoding UTF8
 } catch {}
 
 # --- Play the sound (async) ---
@@ -503,7 +503,7 @@ exit 0
 '@
 
 $hookScriptPath = Join-Path $InstallDir "peon.ps1"
-Set-Content -Path $hookScriptPath -Value $hookScript
+Set-Content -Path $hookScriptPath -Value $hookScript -Encoding UTF8
 
 # --- Install CLI shortcut ---
 $peonCli = @"
@@ -522,7 +522,7 @@ if (-not (Test-Path $cliBinDir)) {
     New-Item -ItemType Directory -Path $cliBinDir -Force | Out-Null
 }
 $cliBatPath = Join-Path $cliBinDir "peon.cmd"
-Set-Content -Path $cliBatPath -Value $peonCli
+Set-Content -Path $cliBatPath -Value $peonCli -Encoding UTF8
 
 # Add to PATH if not already there
 $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
@@ -601,7 +601,7 @@ foreach ($evt in $events) {
     $settings["hooks"][$evt] = $eventHooks
 }
 
-$settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile
+$settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile -Encoding UTF8
 Write-Host "  Hooks registered for: $($events -join ', ')" -ForegroundColor Green
 
 # --- Install skills ---

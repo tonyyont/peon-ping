@@ -66,7 +66,7 @@ if (Test-Path $SettingsFile) {
             }
 
             $settingsObj.hooks = $hooksObj
-            $settingsObj | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile
+            $settingsObj | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile -Encoding UTF8
 
             if ($eventsChanged.Count -gt 0) {
                 Write-Host "  Removed hooks for: $($eventsChanged -join ', ')" -ForegroundColor Green

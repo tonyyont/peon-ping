@@ -904,6 +904,90 @@ print('service=' + mn.get('service', ''))
     shift
     exec bash "$RELAY_SCRIPT" "$@"
     ;;
+  preview)
+    PREVIEW_CAT="${2:-session.start}"
+    # Use Python to load config, find manifest, and list sounds for the category
+    PREVIEW_OUTPUT=$(python3 -c "
+import json, os, sys
+
+peon_dir = '$PEON_DIR'
+config_path = '$CONFIG'
+
+# Load config
+try:
+    cfg = json.load(open(config_path))
+except:
+    cfg = {}
+volume = cfg.get('volume', 0.5)
+active_pack = cfg.get('active_pack', 'peon')
+
+# Load manifest
+pack_dir = os.path.join(peon_dir, 'packs', active_pack)
+if not os.path.isdir(pack_dir):
+    print('ERROR:Pack \"' + active_pack + '\" not found.', file=sys.stderr)
+    sys.exit(1)
+manifest = None
+for mname in ('openpeon.json', 'manifest.json'):
+    mpath = os.path.join(pack_dir, mname)
+    if os.path.exists(mpath):
+        manifest = json.load(open(mpath))
+        break
+if not manifest:
+    print('ERROR:No manifest found for pack \"' + active_pack + '\".', file=sys.stderr)
+    sys.exit(1)
+
+category = '$PREVIEW_CAT'
+categories = manifest.get('categories', {})
+cat_data = categories.get(category)
+if not cat_data or not cat_data.get('sounds'):
+    avail = ', '.join(sorted(c for c in categories if categories[c].get('sounds')))
+    print('ERROR:Category \"' + category + '\" not found in pack \"' + active_pack + '\".', file=sys.stderr)
+    print('Available categories: ' + avail, file=sys.stderr)
+    sys.exit(1)
+
+display_name = manifest.get('display_name', active_pack)
+print('PACK_DISPLAY=' + repr(display_name))
+print('VOLUME=' + str(volume))
+
+sounds = cat_data['sounds']
+for i, s in enumerate(sounds):
+    file_ref = s.get('file', '')
+    label = s.get('label', file_ref)
+    if '/' in file_ref:
+        fpath = os.path.realpath(os.path.join(pack_dir, file_ref))
+    else:
+        fpath = os.path.realpath(os.path.join(pack_dir, 'sounds', file_ref))
+    pack_root = os.path.realpath(pack_dir) + os.sep
+    if not fpath.startswith(pack_root):
+        continue
+    print('SOUND:' + fpath + '|' + label)
+" 2>"$PEON_DIR/.preview_err")
+    PREVIEW_RC=$?
+    if [ $PREVIEW_RC -ne 0 ]; then
+      cat "$PEON_DIR/.preview_err" | sed 's/^ERROR:/peon-ping: /' >&2
+      rm -f "$PEON_DIR/.preview_err"
+      exit 1
+    fi
+    rm -f "$PEON_DIR/.preview_err"
+
+    # Parse output
+    PREVIEW_VOL=$(echo "$PREVIEW_OUTPUT" | grep '^VOLUME=' | head -1 | cut -d= -f2)
+    PREVIEW_VOL="${PREVIEW_VOL:-0.5}"
+    PACK_DISPLAY=$(echo "$PREVIEW_OUTPUT" | grep '^PACK_DISPLAY=' | head -1 | sed "s/^PACK_DISPLAY=//;s/^'//;s/'$//")
+
+    echo "peon-ping: previewing [$PREVIEW_CAT] from $PACK_DISPLAY"
+    echo ""
+
+    echo "$PREVIEW_OUTPUT" | grep '^SOUND:' | while IFS='|' read -r filepath label; do
+      filepath="${filepath#SOUND:}"
+      if [ -f "$filepath" ]; then
+        echo "  ▶ $label"
+        play_sound "$filepath" "$PREVIEW_VOL"
+        wait
+        sleep 0.3
+      fi
+    done
+    exit 0 ;;
   help|--help|-h)
     cat <<'HELPEOF'
 Usage: peon <command>
@@ -915,6 +999,7 @@ Commands:
   status               Check if paused or active
   notifications on     Enable desktop notifications
   notifications off    Disable desktop notifications
+  preview [category]   Play all sounds from a category (default: session.start)
   help                 Show this help
 
 Pack management:

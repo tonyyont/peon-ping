@@ -46,6 +46,17 @@ fi
 PACK_NAME=$(echo "$PROMPT" | sed -E 's/^\s*\/peon-ping-use\s+(\S+).*/\1/')
 log "matched pack=$PACK_NAME sessionId=$SESSION_ID"
 
+# Safe charset: letters, numbers, underscore, hyphen (prevents injection and path traversal)
+if ! echo "$PACK_NAME" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+  log "reject: invalid pack name charset pack=$PACK_NAME"
+  echo '{"continue": false, "user_message": "[X] Invalid pack name (use only letters, numbers, underscores, hyphens)"}'
+  exit 0
+fi
+if ! echo "$SESSION_ID" | grep -qE '^[a-zA-Z0-9_-]+$'; then
+  log "sanitize: invalid session_id charset, using default"
+  SESSION_ID="default"
+fi
+
 # Locate peon-ping installation
 PEON_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping"
 if [ ! -d "$PEON_DIR" ]; then

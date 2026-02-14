@@ -67,6 +67,18 @@ if (-not $cliMode) {
     Write-Log "matched pack=$packName sessionId=$sessionId"
 }
 
+# Safe charset: letters, numbers, underscore, hyphen (prevents injection and path traversal)
+if ($packName -notmatch '^[a-zA-Z0-9_-]+$') {
+    Write-Log "reject: invalid pack name charset pack=$packName"
+    if ($cliMode) { Write-Host "[X] Invalid pack name (use only letters, numbers, underscores, hyphens)"; exit 1 }
+    Write-Response -Continue $false -Message "[X] Invalid pack name (use only letters, numbers, underscores, hyphens)"
+    exit 0
+}
+if ($sessionId -notmatch '^[a-zA-Z0-9_-]+$') {
+    Write-Log "sanitize: invalid session_id charset, using default"
+    $sessionId = "default"
+}
+
 # Locate peon-ping installation
 $peonDir = if ($env:CLAUDE_CONFIG_DIR) { 
     "$env:CLAUDE_CONFIG_DIR/hooks/peon-ping" 

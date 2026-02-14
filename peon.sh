@@ -532,13 +532,70 @@ print('MOBILE_BOT_TOKEN=' + q(mn.get('bot_token', '')))
 
 # --- CLI subcommands (must come before INPUT=$(cat) which blocks on stdin) ---
 PAUSED_FILE="$PEON_DIR/.paused"
+
+# --- Sync shared config to OpenCode adapter config ---
+# The OpenCode adapter is a standalone TypeScript plugin with its own config.json.
+# After any CLI command that writes config or paused state, we sync shared keys
+# so changes take effect in OpenCode without manual editing.
+_ADAPTER_CONFIG_DIRS=()
+_xdg="${XDG_CONFIG_HOME:-$HOME/.config}"
+[ -d "$_xdg/opencode/peon-ping" ] && _ADAPTER_CONFIG_DIRS+=("$_xdg/opencode/peon-ping")
+unset _xdg
+
+sync_adapter_configs() {
+  [ ${#_ADAPTER_CONFIG_DIRS[@]} -eq 0 ] && return 0
+  for _dir in "${_ADAPTER_CONFIG_DIRS[@]}"; do
+    _target="$_dir/config.json"
+    python3 -c "
+import json, sys, os
+
+src_path = '$CONFIG'
+dst_path = '$_target'
+
+# Keys shared between peon.sh and standalone adapters
+SHARED_KEYS = ('active_pack', 'volume', 'enabled', 'desktop_notifications', 'pack_rotation', 'mobile_notify')
+
+try:
+    src = json.load(open(src_path))
+except Exception:
+    sys.exit(0)
+
+try:
+    dst = json.load(open(dst_path))
+except Exception:
+    dst = {}
+
+changed = False
+for key in SHARED_KEYS:
+    if key in src and src[key] != dst.get(key):
+        dst[key] = src[key]
+        changed = True
+
+if changed:
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    json.dump(dst, open(dst_path, 'w'), indent=2)
+" 2>/dev/null || true
+  done
+}
+
+sync_adapter_paused() {
+  [ ${#_ADAPTER_CONFIG_DIRS[@]} -eq 0 ] && return 0
+  for _dir in "${_ADAPTER_CONFIG_DIRS[@]}"; do
+    if [ -f "$PAUSED_FILE" ]; then
+      touch "$_dir/.paused"
+    else
+      rm -f "$_dir/.paused"
+    fi
+  done
+}
+
 case "${1:-}" in
-  pause)   touch "$PAUSED_FILE"; echo "peon-ping: sounds paused"; exit 0 ;;
-  resume)  rm -f "$PAUSED_FILE"; echo "peon-ping: sounds resumed"; exit 0 ;;
+  pause)   touch "$PAUSED_FILE"; sync_adapter_paused; echo "peon-ping: sounds paused"; exit 0 ;;
+  resume)  rm -f "$PAUSED_FILE"; sync_adapter_paused; echo "peon-ping: sounds resumed"; exit 0 ;;
   toggle)
     if [ -f "$PAUSED_FILE" ]; then rm -f "$PAUSED_FILE"; echo "peon-ping: sounds resumed"
     else touch "$PAUSED_FILE"; echo "peon-ping: sounds paused"; fi
-    exit 0 ;;
+    sync_adapter_paused; exit 0 ;;
   status)
     [ -f "$PAUSED_FILE" ] && echo "peon-ping: paused" || echo "peon-ping: active"
     python3 -c "
@@ -639,7 +696,7 @@ cfg['desktop_notifications'] = True
 json.dump(cfg, open(config_path, 'w'), indent=2)
 print('peon-ping: desktop notifications on')
 "
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       off)
         python3 -c "
 import json
@@ -652,7 +709,7 @@ cfg['desktop_notifications'] = False
 json.dump(cfg, open(config_path, 'w'), indent=2)
 print('peon-ping: desktop notifications off')
 "
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       *)
         echo "Usage: peon notifications <on|off>" >&2; exit 1 ;;
     esac ;;
@@ -714,7 +771,7 @@ for mname in ('openpeon.json', 'manifest.json'):
         break
 print(f'peon-ping: switched to {pack_arg} ({display})')
 " || exit 1
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       next)
         python3 -c "
 import json, os, glob
@@ -750,7 +807,7 @@ for mname in ('openpeon.json', 'manifest.json'):
         break
 print(f'peon-ping: switched to {next_pack} ({display})')
 "
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       remove)
         REMOVE_ARG="${3:-}"
         if [ -n "$REMOVE_ARG" ]; then
@@ -843,7 +900,7 @@ if rotation:
     cfg['pack_rotation'] = [p for p in rotation if p not in to_remove]
     json.dump(cfg, open(config_path, 'w'), indent=2)
 "
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       *)
         echo "Usage: peon packs <list|use|next|remove>" >&2; exit 1 ;;
     esac ;;
@@ -893,7 +950,7 @@ json.dump(cfg, open(config_path, 'w'), indent=2)
         curl -sf -H "Title: peon-ping" -H "Tags: video_game" \
           -d "Mobile notifications connected!" \
           "${NTFY_SERVER}/${TOPIC}" >/dev/null 2>&1 && echo "Test notification sent!" || echo "Warning: could not reach ntfy server"
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       pushover)
         USER_KEY="${3:-}"
         APP_TOKEN="${4:-}"
@@ -917,7 +974,7 @@ cfg['mobile_notify'] = {
 json.dump(cfg, open(config_path, 'w'), indent=2)
 "
         echo "peon-ping: mobile notifications enabled via Pushover"
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       telegram)
         BOT_TOKEN="${3:-}"
         CHAT_ID="${4:-}"
@@ -941,7 +998,7 @@ cfg['mobile_notify'] = {
 json.dump(cfg, open(config_path, 'w'), indent=2)
 "
         echo "peon-ping: mobile notifications enabled via Telegram"
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       off)
         python3 -c "
 import json
@@ -956,7 +1013,7 @@ cfg['mobile_notify'] = mn
 json.dump(cfg, open(config_path, 'w'), indent=2)
 "
         echo "peon-ping: mobile notifications disabled"
-        exit 0 ;;
+        sync_adapter_configs; exit 0 ;;
       on)
         python3 -c "
 import json
@@ -974,7 +1031,7 @@ cfg['mobile_notify'] = mn
 json.dump(cfg, open(config_path, 'w'), indent=2)
 print('peon-ping: mobile notifications enabled')
 "
-        exit $? ;;
+        _rc=$?; [ $_rc -eq 0 ] && sync_adapter_configs; exit $_rc ;;
       status)
         python3 -c "
 import json

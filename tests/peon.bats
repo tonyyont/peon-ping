@@ -1368,3 +1368,148 @@ assert mn['service'] == 'ntfy', 'service should be preserved'
   [[ "$output" == *"user.spam"* ]]
   [[ "$output" == *"sounds"* ]]
 }
+
+# ============================================================
+# Adapter config sync (OpenCode / Kilo)
+# ============================================================
+
+# Helper: set up a fake OpenCode adapter config dir for sync tests
+setup_adapter_sync() {
+  export XDG_CONFIG_HOME="$TEST_DIR/xdg_config"
+  mkdir -p "$XDG_CONFIG_HOME/opencode/peon-ping"
+  # Create a config with adapter-specific keys that should be preserved
+  cat > "$XDG_CONFIG_HOME/opencode/peon-ping/config.json" <<'JSON'
+{
+  "active_pack": "peon",
+  "volume": 0.5,
+  "enabled": true,
+  "categories": {
+    "session.start": true,
+    "session.end": true,
+    "task.acknowledge": true,
+    "task.complete": true,
+    "task.error": true,
+    "task.progress": true,
+    "input.required": true,
+    "resource.limit": true,
+    "user.spam": true
+  },
+  "spam_threshold": 3,
+  "spam_window_seconds": 10,
+  "debounce_ms": 500
+}
+JSON
+}
+
+@test "packs use syncs active_pack to OpenCode adapter config" {
+  setup_adapter_sync
+  bash "$PEON_SH" packs use sc_kerrigan
+  python3 -c "
+import json
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+assert cfg['active_pack'] == 'sc_kerrigan', f'expected sc_kerrigan, got {cfg[\"active_pack\"]}'
+"
+}
+
+@test "packs use preserves adapter-specific keys during sync" {
+  setup_adapter_sync
+  bash "$PEON_SH" packs use sc_kerrigan
+  python3 -c "
+import json
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+# Adapter-specific keys must be preserved
+assert cfg['spam_threshold'] == 3, 'spam_threshold should be preserved'
+assert cfg['debounce_ms'] == 500, 'debounce_ms should be preserved'
+assert cfg['categories']['session.end'] == True, 'session.end category should be preserved'
+"
+}
+
+@test "packs next syncs active_pack to OpenCode adapter config" {
+  setup_adapter_sync
+  bash "$PEON_SH" packs next
+  python3 -c "
+import json
+# The canonical config should have switched from peon to sc_kerrigan (alphabetical)
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+assert cfg['active_pack'] == 'sc_kerrigan', f'expected sc_kerrigan, got {cfg[\"active_pack\"]}'
+"
+}
+
+@test "notifications off syncs desktop_notifications to OpenCode adapter config" {
+  setup_adapter_sync
+  bash "$PEON_SH" notifications off
+  python3 -c "
+import json
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+assert cfg['desktop_notifications'] == False, 'expected desktop_notifications False'
+"
+}
+
+@test "notifications on syncs desktop_notifications to OpenCode adapter config" {
+  setup_adapter_sync
+  bash "$PEON_SH" notifications off
+  bash "$PEON_SH" notifications on
+  python3 -c "
+import json
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+assert cfg['desktop_notifications'] == True, 'expected desktop_notifications True'
+"
+}
+
+@test "pause syncs .paused to OpenCode adapter config dir" {
+  setup_adapter_sync
+  bash "$PEON_SH" pause
+  [ -f "$XDG_CONFIG_HOME/opencode/peon-ping/.paused" ]
+}
+
+@test "resume removes .paused from OpenCode adapter config dir" {
+  setup_adapter_sync
+  bash "$PEON_SH" pause
+  [ -f "$XDG_CONFIG_HOME/opencode/peon-ping/.paused" ]
+  bash "$PEON_SH" resume
+  [ ! -f "$XDG_CONFIG_HOME/opencode/peon-ping/.paused" ]
+}
+
+@test "toggle syncs .paused to OpenCode adapter config dir" {
+  setup_adapter_sync
+  bash "$PEON_SH" toggle
+  [ -f "$XDG_CONFIG_HOME/opencode/peon-ping/.paused" ]
+  bash "$PEON_SH" toggle
+  [ ! -f "$XDG_CONFIG_HOME/opencode/peon-ping/.paused" ]
+}
+
+@test "mobile ntfy syncs mobile_notify to OpenCode adapter config" {
+  setup_adapter_sync
+  bash "$PEON_SH" mobile ntfy test-topic
+  python3 -c "
+import json
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+mn = cfg['mobile_notify']
+assert mn['service'] == 'ntfy', f'expected ntfy, got {mn[\"service\"]}'
+assert mn['topic'] == 'test-topic', f'expected test-topic, got {mn[\"topic\"]}'
+"
+}
+
+@test "mobile off syncs mobile_notify to OpenCode adapter config" {
+  setup_adapter_sync
+  bash "$PEON_SH" mobile ntfy test-topic
+  bash "$PEON_SH" mobile off
+  python3 -c "
+import json
+cfg = json.load(open('$XDG_CONFIG_HOME/opencode/peon-ping/config.json'))
+mn = cfg['mobile_notify']
+assert mn['enabled'] == False, 'expected disabled'
+"
+}
+
+@test "sync skips when no adapter config dirs exist" {
+  # Do NOT set up adapter config dirs — sync should be a no-op
+  export XDG_CONFIG_HOME="$TEST_DIR/empty_xdg"
+  mkdir -p "$XDG_CONFIG_HOME"
+  # Should not error
+  run bash "$PEON_SH" packs use sc_kerrigan
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"switched to sc_kerrigan"* ]]
+}
+
+

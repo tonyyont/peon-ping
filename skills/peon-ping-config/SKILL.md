@@ -18,12 +18,14 @@ The config file is at `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping/confi
 - **active_pack** (string): Current sound pack name (e.g. `"peon"`, `"sc_kerrigan"`, `"glados"`)
 - **enabled** (boolean): Master on/off switch
 - **pack_rotation** (array of strings): List of packs to rotate through per session. Empty `[]` uses `active_pack` only.
-- **pack_rotation_mode** (string): `"random"` (default) picks a random pack each session. `"round-robin"` cycles through in order.
+- **pack_rotation_mode** (string): `"random"` (default) picks a random pack each session. `"round-robin"` cycles through in order. `"agentskill"` uses explicit per-session assignments from `/peon-ping-use`; invalid or missing packs fall back to `active_pack` and the stale assignment is removed.
 - **categories** (object): Toggle individual CESP sound categories:
   - `session.start`, `task.acknowledge`, `task.complete`, `task.error`, `input.required`, `resource.limit`, `user.spam` — each a boolean
 - **annoyed_threshold** (number): How many rapid prompts trigger user.spam sounds
 - **annoyed_window_seconds** (number): Time window for the annoyed threshold
 - **silent_window_seconds** (number): Suppress task.complete sounds for tasks shorter than this many seconds
+- **session_ttl_days** (number, default: 7): Expire stale per-session pack assignments older than N days (when using agentskill mode)
+- **desktop_notifications** (boolean): Toggle notification popups independently from sounds (default: `true`)
 
 ## How to update
 

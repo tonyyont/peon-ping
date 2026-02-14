@@ -19,7 +19,8 @@ setup() {
   PEON_PS1="$TEST_DIR/peon.ps1"
 
   # Extract embedded PowerShell script (between @' and '@)
-  awk '/^\$hookScript = @'"'"'$/,/^'"'"'@$/{if (!/^\$hookScript = @'"'"'$/ && !/^'"'"'@$/) print}' "$INSTALL_PS1" > "$PEON_PS1"
+  # Normalize CRLF to LF so awk pattern matching works on Windows-sourced files
+  tr -d '\r' < "$INSTALL_PS1" | awk '/^\$hookScript = @'"'"'$/,/^'"'"'@$/{if (!/^\$hookScript = @'"'"'$/ && !/^'"'"'@$/) print}' > "$PEON_PS1"
 }
 
 teardown() {

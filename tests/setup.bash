@@ -3,6 +3,7 @@
 # Create isolated test environment so we never touch real config
 setup_test_env() {
   TEST_DIR="$(mktemp -d)"
+  export TEST_DIR
   export CLAUDE_PEON_DIR="$TEST_DIR"
 
   # Create directory structure

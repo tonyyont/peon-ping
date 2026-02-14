@@ -822,6 +822,126 @@ JSON
   [[ "$sound" == *"/packs/peon/sounds/"* ]]
 }
 
+@test "agentskill mode uses assigned pack" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "pack_rotation_mode": "agentskill"
+}
+JSON
+  # Inject state with session assignment using Python
+  python3 <<'PYTHON'
+import json, os, time
+state_file = os.environ['TEST_DIR'] + '/.state.json'
+now = int(time.time())
+state = {'session_packs': {'ask1': {'pack': 'sc_kerrigan', 'last_used': now}}}
+with open(state_file, 'w') as f:
+    json.dump(state, f)
+PYTHON
+  
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"ask1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+  sound=$(afplay_sound)
+  # Should use sc_kerrigan pack from session assignment
+  [[ "$sound" == *"/packs/sc_kerrigan/sounds/"* ]]
+}
+
+@test "agentskill mode uses default pack when no assignment" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "pack_rotation_mode": "agentskill"
+}
+JSON
+  
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"ask2","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+  sound=$(afplay_sound)
+  # Should use peon (active_pack) since ask2 has no assignment
+  [[ "$sound" == *"/packs/peon/sounds/"* ]]
+}
+
+@test "agentskill mode falls back when assigned pack missing" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "pack_rotation_mode": "agentskill"
+}
+JSON
+  # Inject state with invalid pack assignment
+  python3 <<'PYTHON'
+import json, os, time
+state_file = os.environ['TEST_DIR'] + '/.state.json'
+now = int(time.time())
+state = {'session_packs': {'ask3': {'pack': 'nonexistent_pack', 'last_used': now}}}
+with open(state_file, 'w') as f:
+    json.dump(state, f)
+PYTHON
+  
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"ask3","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+  sound=$(afplay_sound)
+  # Should fallback to peon (active_pack)
+  [[ "$sound" == *"/packs/peon/sounds/"* ]]
+  
+  # Verify ask3 was removed from session_packs
+  python3 <<'PYTHON'
+import json, os
+state_file = os.environ['TEST_DIR'] + '/.state.json'
+with open(state_file, 'r') as f:
+    state = json.load(f)
+if 'ask3' in state.get('session_packs', {}):
+    exit(1)  # Fail if ask3 still exists
+PYTHON
+}
+
+@test "old sessions expire after TTL" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{
+  "active_pack": "peon", "volume": 0.5, "enabled": true,
+  "categories": {},
+  "session_ttl_days": 7
+}
+JSON
+  # Inject state with old and active sessions
+  python3 <<'PYTHON'
+import json, os, time
+state_file = os.environ['TEST_DIR'] + '/.state.json'
+now = int(time.time())
+eight_days_ago = now - (8 * 86400)
+state = {
+    'session_packs': {
+        'old_session': {'pack': 'peon', 'last_used': eight_days_ago},
+        'active_session': {'pack': 'sc_kerrigan', 'last_used': now}
+    }
+}
+with open(state_file, 'w') as f:
+    json.dump(state, f)
+PYTHON
+  
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"active_session","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  
+  # Verify old_session was removed, active_session remains
+  python3 <<'PYTHON'
+import json, os
+state_file = os.environ['TEST_DIR'] + '/.state.json'
+with open(state_file, 'r') as f:
+    state = json.load(f)
+session_packs = state.get('session_packs', {})
+if 'old_session' in session_packs:
+    exit(1)  # Fail if old_session still exists
+if 'active_session' not in session_packs:
+    exit(2)  # Fail if active_session was removed
+PYTHON
+}
+
 # ============================================================
 # Linux audio backend detection (order of preference)
 # ============================================================

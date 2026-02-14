@@ -42,7 +42,7 @@ for event, entries in list(hooks.items()):
     entries = [
         h for h in entries
         if not any(
-            'peon.sh' in hk.get('command', '')
+            'peon.sh' in hk.get('command', '') or 'hook-handle-use.sh' in hk.get('command', '')
             for hk in h.get('hooks', [])
         )
     ]
@@ -66,6 +66,53 @@ else:
 "
 }
 
+# Remove Cursor hooks if ~/.cursor/hooks.json exists
+_remove_cursor_hooks() {
+  local cursor_hooks="$HOME/.cursor/hooks.json"
+  [ -f "$cursor_hooks" ] || return 0
+  
+  python3 -c "
+import json, os
+
+hooks_path = '$cursor_hooks'
+try:
+    with open(hooks_path) as f:
+        data = json.load(f)
+except:
+    exit(0)
+
+if 'hooks' not in data:
+    exit(0)
+
+hooks = data['hooks']
+events_cleaned = []
+
+for event, entries in list(hooks.items()):
+    if not isinstance(entries, list):
+        continue
+    original_count = len(entries)
+    entries = [
+        h for h in entries
+        if not ('hook-handle-use' in h.get('command', ''))
+    ]
+    if len(entries) < original_count:
+        events_cleaned.append(event)
+    if entries:
+        hooks[event] = entries
+    else:
+        del hooks[event]
+
+data['hooks'] = hooks
+
+with open(hooks_path, 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+
+if events_cleaned:
+    print('Removed Cursor hooks for: ' + ', '.join(events_cleaned))
+"
+}
+
 echo "Removing peon hooks from settings.json..."
 _remove_peon_hooks "$SETTINGS"
 
@@ -74,6 +121,10 @@ if [ "$IS_LOCAL" = true ] && [ "$SETTINGS" != "$GLOBAL_SETTINGS" ]; then
   echo "Removing peon hooks from global settings.json..."
   _remove_peon_hooks "$GLOBAL_SETTINGS"
 fi
+
+# Remove Cursor hooks
+echo "Removing Cursor hooks..."
+_remove_cursor_hooks
 
 # --- Restore notify.sh backup (global install only) ---
 if [ "$IS_LOCAL" = false ] && [ -f "$NOTIFY_BACKUP" ]; then
@@ -132,7 +183,7 @@ if [ -f "$FISH_COMPLETIONS" ]; then
 fi
 
 # --- Remove skill directories ---
-for SKILL_NAME in peon-ping-toggle peon-ping-config; do
+for SKILL_NAME in peon-ping-toggle peon-ping-config peon-ping-use; do
   SKILL_DIR="$BASE_DIR/skills/$SKILL_NAME"
   if [ -d "$SKILL_DIR" ]; then
     echo ""

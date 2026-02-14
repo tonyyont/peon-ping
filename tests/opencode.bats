@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+bats_require_minimum_version 1.5.0
 
 # Tests for adapters/opencode.sh — the OpenCode adapter install script.
 # Covers: install, uninstall, idempotency, broken-symlink fix, XDG support,
@@ -221,9 +222,11 @@ json.dump(c, open('$CONFIG_DIR/config.json', 'w'))
   for cmd in printf uname grep env sed find head; do
     [ -x "/usr/bin/$cmd" ] && ln -sf "/usr/bin/$cmd" "$MOCK_BIN/$cmd" 2>/dev/null || true
   done
-  export PATH="$MOCK_BIN:/bin"
-  run bash "$OPENCODE_SH"
-  [ "$status" -ne 0 ]
+  # Use MOCK_BIN only so curl cannot be found (it may live in /bin or /usr/bin)
+  old_path="$PATH"
+  export PATH="$MOCK_BIN"
+  run -127 bash "$OPENCODE_SH"
+  export PATH="$old_path"
 }
 
 # ============================================================

@@ -295,6 +295,11 @@ if [ -n "$SCRIPT_DIR" ]; then
     mkdir -p "$INSTALL_DIR/adapters"
     cp "$SCRIPT_DIR/adapters/"*.sh "$INSTALL_DIR/adapters/" 2>/dev/null || true
   fi
+  if [ -d "$SCRIPT_DIR/scripts" ]; then
+    mkdir -p "$INSTALL_DIR/scripts"
+    cp "$SCRIPT_DIR/scripts/"*.sh "$INSTALL_DIR/scripts/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/scripts/"*.ps1 "$INSTALL_DIR/scripts/" 2>/dev/null || true
+  fi
   if [ -f "$SCRIPT_DIR/docs/peon-icon.png" ]; then
     mkdir -p "$INSTALL_DIR/docs"
     cp "$SCRIPT_DIR/docs/peon-icon.png" "$INSTALL_DIR/docs/"
@@ -318,6 +323,9 @@ else
   curl -fsSL "$REPO_BASE/adapters/antigravity.sh" -o "$INSTALL_DIR/adapters/antigravity.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/opencode.sh" -o "$INSTALL_DIR/adapters/opencode.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/windsurf.sh" -o "$INSTALL_DIR/adapters/windsurf.sh" 2>/dev/null || true
+  mkdir -p "$INSTALL_DIR/scripts"
+  curl -fsSL "$REPO_BASE/scripts/hook-handle-use.sh" -o "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/scripts/hook-handle-use.ps1" -o "$INSTALL_DIR/scripts/hook-handle-use.ps1" 2>/dev/null || true
   mkdir -p "$INSTALL_DIR/docs"
   curl -fsSL "$REPO_BASE/docs/peon-icon.png" -o "$INSTALL_DIR/docs/peon-icon.png" 2>/dev/null || true
   if [ "$UPDATING" = false ]; then
@@ -577,6 +585,7 @@ fi
 
 chmod +x "$INSTALL_DIR/peon.sh"
 chmod +x "$INSTALL_DIR/relay.sh"
+chmod +x "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
 
 # --- Install skill (slash command) ---
 SKILL_DIR="$BASE_DIR/skills/peon-ping-toggle"
@@ -611,6 +620,17 @@ elif [ -z "$SCRIPT_DIR" ]; then
   curl -fsSL "$REPO_BASE/skills/peon-ping-config/SKILL.md" -o "$CONFIG_SKILL_DIR/SKILL.md"
 else
   echo "Warning: skills/peon-ping-config not found in local clone, skipping config skill install"
+fi
+
+# --- Install use skill ---
+USE_SKILL_DIR="$BASE_DIR/skills/peon-ping-use"
+mkdir -p "$USE_SKILL_DIR"
+if [ -n "$SCRIPT_DIR" ] && [ -d "$SCRIPT_DIR/skills/peon-ping-use" ]; then
+  cp "$SCRIPT_DIR/skills/peon-ping-use/SKILL.md" "$USE_SKILL_DIR/"
+elif [ -z "$SCRIPT_DIR" ]; then
+  curl -fsSL "$REPO_BASE/skills/peon-ping-use/SKILL.md" -o "$USE_SKILL_DIR/SKILL.md"
+else
+  echo "Warning: skills/peon-ping-use not found in local clone, skipping use skill install"
 fi
 
 # --- Add shell alias (global install only) ---
@@ -738,6 +758,117 @@ with open(settings_path, 'w') as f:
 
 print('Hooks registered for: ' + ', '.join(events))
 "
+
+# Register beforeSubmitPrompt hook for /peon-ping-use command
+BEFORE_SUBMIT_HOOK="$GLOBAL_BASE/hooks/peon-ping/scripts/hook-handle-use.sh"
+
+python3 -c "
+import json, os, sys
+
+settings_path = '$HOOK_SETTINGS'
+hook_cmd = '$BEFORE_SUBMIT_HOOK'
+
+# Load existing settings
+if os.path.exists(settings_path):
+    with open(settings_path) as f:
+        settings = json.load(f)
+else:
+    settings = {}
+
+hooks = settings.setdefault('hooks', {})
+
+# Create beforeSubmitPrompt hook entry (Claude Code format)
+before_submit_hook = {
+    'type': 'command',
+    'command': hook_cmd,
+    'timeout': 5
+}
+
+before_submit_entry = {
+    'matcher': '',
+    'hooks': [before_submit_hook]
+}
+
+# Register beforeSubmitPrompt hook
+event_hooks = hooks.get('beforeSubmitPrompt', [])
+# Remove any existing handle-use entries
+event_hooks = [
+    h for h in event_hooks
+    if not any(
+        'hook-handle-use.sh' in hk.get('command', '')
+        for hk in h.get('hooks', [])
+    )
+]
+event_hooks.append(before_submit_entry)
+hooks['beforeSubmitPrompt'] = event_hooks
+
+settings['hooks'] = hooks
+
+with open(settings_path, 'w') as f:
+    json.dump(settings, f, indent=2)
+    f.write('\n')
+
+print('beforeSubmitPrompt hook registered for /peon-ping-use command')
+"
+
+# Register beforeSubmitPrompt hook for Cursor IDE if ~/.cursor exists
+CURSOR_DIR="$HOME/.cursor"
+CURSOR_HOOKS_FILE="$CURSOR_DIR/hooks.json"
+CURSOR_HOOK_CMD="$GLOBAL_BASE/hooks/peon-ping/scripts/hook-handle-use.sh"
+
+if [ -d "$CURSOR_DIR" ]; then
+  echo ""
+  echo "Detected Cursor IDE installation, registering hooks..."
+  
+  python3 -c "
+import json, os
+
+hooks_file = '$CURSOR_HOOKS_FILE'
+hook_cmd = '$CURSOR_HOOK_CMD'
+
+# Load or create hooks.json
+if os.path.exists(hooks_file):
+    with open(hooks_file) as f:
+        data = json.load(f)
+else:
+    data = {'version': 1, 'hooks': {}}
+
+# Ensure version and hooks structure
+if 'version' not in data:
+    data['version'] = 1
+if 'hooks' not in data:
+    data['hooks'] = {}
+
+hooks = data['hooks']
+
+# Create beforeSubmitPrompt hook entry (Cursor format)
+before_submit_hook = {
+    'command': hook_cmd,
+    'timeout': 5
+}
+
+# Register beforeSubmitPrompt hook
+event_hooks = hooks.get('beforeSubmitPrompt', [])
+# Remove any existing handle-use entries
+event_hooks = [
+    h for h in event_hooks
+    if 'hook-handle-use.sh' not in h.get('command', '')
+]
+event_hooks.append(before_submit_hook)
+hooks['beforeSubmitPrompt'] = event_hooks
+
+data['hooks'] = hooks
+
+# Ensure directory exists
+os.makedirs(os.path.dirname(hooks_file), exist_ok=True)
+
+with open(hooks_file, 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+
+print('Cursor beforeSubmitPrompt hook registered')
+"
+fi
 
 # --- Remove peon-ping hooks from project-level settings to prevent doubles ---
 # Since hooks are always written to global settings now, clean any stale

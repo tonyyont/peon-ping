@@ -43,11 +43,11 @@ if (Test-Path $SettingsFile) {
                 $entries = @($hooksObj.$event)
                 $originalCount = $entries.Count
 
-                # Filter out entries that contain peon.ps1, peon.sh, or notify.sh
+                # Filter out entries that contain peon.ps1, peon.sh, notify.sh, or hook-handle-use
                 $filtered = @($entries | Where-Object {
                     $hasPeon = $false
                     foreach ($h in $_.hooks) {
-                        if ($h.command -and ($h.command -match "peon\.ps1" -or $h.command -match "peon\.sh" -or $h.command -match "notify\.sh")) {
+                        if ($h.command -and ($h.command -match "peon\.ps1" -or $h.command -match "peon\.sh" -or $h.command -match "notify\.sh" -or $h.command -match "hook-handle-use")) {
                             $hasPeon = $true
                             break
                         }
@@ -80,12 +80,62 @@ if (Test-Path $SettingsFile) {
     }
 }
 
+# --- Remove Cursor hooks ---
+$CursorDir = Join-Path $env:USERPROFILE ".cursor"
+$CursorHooksFile = Join-Path $CursorDir "hooks.json"
+
+if (Test-Path $CursorHooksFile) {
+    Write-Host ""
+    Write-Host "Removing Cursor hooks..."
+    
+    try {
+        $cursorData = Get-Content $CursorHooksFile -Raw | ConvertFrom-Json
+        $eventsChanged = @()
+        
+        if ($cursorData.hooks) {
+            $hooksObj = $cursorData.hooks
+            $eventNames = $hooksObj.PSObject.Properties.Name
+            
+            foreach ($event in $eventNames) {
+                $entries = @($hooksObj.$event)
+                $originalCount = $entries.Count
+                
+                # Filter out entries that contain hook-handle-use
+                $filtered = @($entries | Where-Object {
+                    -not ($_.command -and $_.command -match "hook-handle-use")
+                })
+                
+                if ($filtered.Count -lt $originalCount) {
+                    $eventsChanged += $event
+                }
+                
+                if ($filtered.Count -gt 0) {
+                    $hooksObj.$event = $filtered
+                } else {
+                    $hooksObj.PSObject.Properties.Remove($event)
+                }
+            }
+            
+            $cursorData.hooks = $hooksObj
+            $cursorData | ConvertTo-Json -Depth 10 | Set-Content $CursorHooksFile -Encoding UTF8
+            
+            if ($eventsChanged.Count -gt 0) {
+                Write-Host "  Removed Cursor hooks for: $($eventsChanged -join ', ')" -ForegroundColor Green
+            } else {
+                Write-Host "  No peon-ping Cursor hooks found" -ForegroundColor DarkGray
+            }
+        }
+    } catch {
+        Write-Host "  Warning: Could not update Cursor hooks.json: $_" -ForegroundColor Yellow
+    }
+}
+
 # --- Remove skills ---
 Write-Host ""
 Write-Host "Removing skills..."
 
 $skillsRemoved = 0
-foreach ($skillName in @("peon-ping-toggle", "peon-ping-config")) {
+foreach ($skillName in @("peon-ping-toggle", "peon-ping-config", "peon-ping-use")) {
     $skillPath = Join-Path $SkillsDir $skillName
     if (Test-Path $skillPath) {
         Remove-Item -Path $skillPath -Recurse -Force

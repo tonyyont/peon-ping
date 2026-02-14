@@ -1324,13 +1324,75 @@ elif session_id in agent_sessions:
     print('PEON_EXIT=true')
     sys.exit(0)
 
+# --- Session cleanup: expire old sessions ---
+now = time.time()
+cutoff = now - cfg.get('session_ttl_days', 7) * 86400
+session_packs = state.get('session_packs', {})
+session_packs_clean = {}
+for sid, pack_data in session_packs.items():
+    if isinstance(pack_data, dict):
+        # New format with timestamp
+        if pack_data.get('last_used', 0) > cutoff:
+            pack_data['last_used'] = now if sid == session_id else pack_data['last_used']
+            session_packs_clean[sid] = pack_data
+    elif sid == session_id:
+        # Old format, upgrade active session
+        session_packs_clean[sid] = {'pack': pack_data, 'last_used': now}
+    elif isinstance(pack_data, str):
+        # Old format for inactive sessions - keep only if we can't determine age
+        # This is a migration path; on next use, it will be upgraded
+        session_packs_clean[sid] = pack_data
+session_packs = session_packs_clean
+if session_packs != state.get('session_packs', {}):
+    state['session_packs'] = session_packs
+    state_dirty = True
+
 # --- Pack rotation: pin a pack per session ---
-if pack_rotation and cfg.get('pack_rotation_mode', 'random') != 'off':
+rotation_mode = cfg.get('pack_rotation_mode', 'random')
+
+if rotation_mode == 'agentskill':
+    # Explicit per-session assignments (from skill)
+    session_packs = state.get('session_packs', {})
+    if session_id in session_packs and session_packs[session_id]:
+        pack_data = session_packs[session_id]
+        # Handle both old string format and new dict format
+        if isinstance(pack_data, dict):
+            candidate = pack_data.get('pack', '')
+        else:
+            candidate = pack_data
+        # Validate pack exists, fallback to active_pack if missing
+        candidate_dir = os.path.join(peon_dir, 'packs', candidate)
+        if candidate and os.path.isdir(candidate_dir):
+            active_pack = candidate
+            # Update timestamp for this session
+            session_packs[session_id] = {'pack': candidate, 'last_used': time.time()}
+            state['session_packs'] = session_packs
+            state_dirty = True
+        else:
+            # Pack was deleted or invalid, use default
+            active_pack = cfg.get('active_pack', 'peon')
+            # Clean up invalid entry
+            del session_packs[session_id]
+            state['session_packs'] = session_packs
+            state_dirty = True
+    else:
+        # No assignment: check session_packs["default"] (for Cursor users without conversation_id)
+        default_data = session_packs.get('default')
+        if default_data:
+            candidate = default_data.get('pack', default_data) if isinstance(default_data, dict) else default_data
+            candidate_dir = os.path.join(peon_dir, 'packs', candidate)
+            if candidate and os.path.isdir(candidate_dir):
+                active_pack = candidate
+            else:
+                active_pack = cfg.get('active_pack', 'peon')
+        else:
+            active_pack = cfg.get('active_pack', 'peon')
+elif pack_rotation and rotation_mode in ('random', 'round-robin'):
+    # Automatic rotation (existing behavior)
     session_packs = state.get('session_packs', {})
     if session_id in session_packs and session_packs[session_id] in pack_rotation:
         active_pack = session_packs[session_id]
     else:
-        rotation_mode = cfg.get('pack_rotation_mode', 'random')
         if rotation_mode == 'round-robin':
             rotation_index = state.get('rotation_index', 0) % len(pack_rotation)
             active_pack = pack_rotation[rotation_index]
@@ -1340,6 +1402,9 @@ if pack_rotation and cfg.get('pack_rotation_mode', 'random') != 'off':
         session_packs[session_id] = active_pack
         state['session_packs'] = session_packs
         state_dirty = True
+else:
+    # Default: everyone uses active_pack
+    active_pack = cfg.get('active_pack', 'peon')
 
 # --- Project name ---
 project = cwd.rsplit('/', 1)[-1] if cwd else 'claude'

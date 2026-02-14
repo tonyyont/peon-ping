@@ -16,5 +16,6 @@
   "annoyed_window_seconds": 10,
   "silent_window_seconds": 0,
   "pack_rotation": [],
-  "pack_rotation_mode": "random"
+  "pack_rotation_mode": "random",
+  "session_ttl_days": 7
 }

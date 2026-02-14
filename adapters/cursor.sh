@@ -44,8 +44,13 @@ case "$CURSOR_EVENT" in
     ;;
 esac
 
-SESSION_ID="cursor-${CURSOR_SESSION_ID:-$$}"
-CWD="${PWD}"
+# Cursor sends JSON with conversation_id in stdin
+INPUT=$(cat)
+SESSION_ID=$(echo "$INPUT" | jq -r '.conversation_id // empty')
+[ -z "$SESSION_ID" ] && SESSION_ID="cursor-$$"
+CWD=$(echo "$INPUT" | jq -r '.workspace_roots[0] // .cwd // ""')
+[ -z "$CWD" ] && CWD="${PWD}"
 
-echo "{\"hook_event_name\":\"$EVENT\",\"notification_type\":\"\",\"cwd\":\"$CWD\",\"session_id\":\"$SESSION_ID\",\"permission_mode\":\"\"}" \
+echo "$INPUT" | jq --arg event "$EVENT" --arg sid "$SESSION_ID" --arg cwd "$CWD" \
+  '{hook_event_name: $event, notification_type: "", cwd: $cwd, session_id: $sid, permission_mode: ""}' \
   | bash "$PEON_DIR/peon.sh"

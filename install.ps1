@@ -200,6 +200,30 @@ if (Test-Path $winPlaySource) {
     }
 }
 
+# Install hook-handle-use scripts (for /peon-ping-use command)
+$hookHandleUsePs1Source = Join-Path $ScriptDir "scripts\hook-handle-use.ps1"
+$hookHandleUsePs1Target = Join-Path $scriptsDir "hook-handle-use.ps1"
+$hookHandleUseShSource = Join-Path $ScriptDir "scripts\hook-handle-use.sh"
+$hookHandleUseShTarget = Join-Path $scriptsDir "hook-handle-use.sh"
+
+if (Test-Path $hookHandleUsePs1Source) {
+    # Local install: copy from repo
+    Copy-Item -Path $hookHandleUsePs1Source -Destination $hookHandleUsePs1Target -Force
+    Copy-Item -Path $hookHandleUseShSource -Destination $hookHandleUseShTarget -Force
+} else {
+    # One-liner install: download from GitHub
+    try {
+        Invoke-WebRequest -Uri "$RepoBase/scripts/hook-handle-use.ps1" -OutFile $hookHandleUsePs1Target -UseBasicParsing -ErrorAction Stop
+    } catch {
+        Write-Host "  Warning: Could not download hook-handle-use.ps1" -ForegroundColor Yellow
+    }
+    try {
+        Invoke-WebRequest -Uri "$RepoBase/scripts/hook-handle-use.sh" -OutFile $hookHandleUseShTarget -UseBasicParsing -ErrorAction Stop
+    } catch {
+        Write-Host "  Warning: Could not download hook-handle-use.sh" -ForegroundColor Yellow
+    }
+}
+
 # --- Install the main hook script (PowerShell) ---
 $hookScript = @'
 # peon-ping hook for Claude Code (Windows native)
@@ -352,6 +376,9 @@ try {
 $hookEvent = $event.hook_event_name
 if (-not $hookEvent) { exit 0 }
 
+# Extract session ID (Claude Code: session_id, Cursor: conversation_id)
+$sessionId = if ($event.session_id) { $event.session_id } elseif ($event.conversation_id) { $event.conversation_id } else { "default" }
+
 # Helper function to convert PSCustomObject to hashtable (PS 5.1 compat)
 function ConvertTo-Hashtable {
     param([Parameter(ValueFromPipeline)]$obj)
@@ -378,6 +405,37 @@ try {
     }
 } catch {
     $state = @{}
+}
+
+# --- Session cleanup: expire old sessions ---
+$now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$ttlDays = if ($config.session_ttl_days) { $config.session_ttl_days } else { 7 }
+$cutoff = $now - ($ttlDays * 86400)
+$sessionPacks = if ($state.ContainsKey("session_packs")) { $state["session_packs"] } else { @{} }
+$sessionPacksClean = @{}
+foreach ($sid in $sessionPacks.Keys) {
+    $packData = $sessionPacks[$sid]
+    if ($packData -is [hashtable]) {
+        # New format with timestamp
+        $lastUsed = if ($packData.ContainsKey("last_used")) { $packData["last_used"] } else { 0 }
+        if ($lastUsed -gt $cutoff) {
+            if ($sid -eq $sessionId) {
+                $packData["last_used"] = $now
+            }
+            $sessionPacksClean[$sid] = $packData
+        }
+    } elseif ($sid -eq $sessionId) {
+        # Old format, upgrade active session
+        $sessionPacksClean[$sid] = @{ pack = $packData; last_used = $now }
+    } elseif ($packData -is [string]) {
+        # Old format for inactive sessions - keep for now (migration path)
+        $sessionPacksClean[$sid] = $packData
+    }
+}
+$state["session_packs"] = $sessionPacksClean
+$stateDirty = $false
+if ($sessionPacksClean.Count -ne $sessionPacks.Count) {
+    $stateDirty = $true
 }
 
 # --- Map Claude Code hook event -> CESP manifest category ---
@@ -415,7 +473,6 @@ switch ($hookEvent) {
     }
     "UserPromptSubmit" {
         # Detect rapid prompts for "annoyed" easter egg
-        $sessionId = if ($event.session_id) { $event.session_id } else { "default" }
         $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
         $annoyedThreshold = if ($config.annoyed_threshold) { $config.annoyed_threshold } else { 3 }
         $annoyedWindow = if ($config.annoyed_window_seconds) { $config.annoyed_window_seconds } else { 10 }
@@ -453,7 +510,55 @@ $activePack = $config.active_pack
 if (-not $activePack) { $activePack = "peon" }
 
 # Support pack rotation
-if ($config.pack_rotation -and $config.pack_rotation.Count -gt 0) {
+$rotationMode = $config.pack_rotation_mode
+if (-not $rotationMode) { $rotationMode = "random" }
+
+if ($rotationMode -eq "agentskill") {
+    # Explicit per-session assignments (from skill)
+    $sessionPacks = $state.session_packs
+    if (-not $sessionPacks) { $sessionPacks = @{} }
+    if ($sessionPacks.ContainsKey($sessionId) -and $sessionPacks[$sessionId]) {
+        $packData = $sessionPacks[$sessionId]
+        # Handle both old string format and new dict format
+        if ($packData -is [hashtable]) {
+            $candidate = $packData.pack
+        } else {
+            $candidate = $packData
+        }
+        $candidateDir = Join-Path $InstallDir "packs\$candidate"
+        if ($candidate -and (Test-Path $candidateDir -PathType Container)) {
+            $activePack = $candidate
+            # Update timestamp
+            $sessionPacks[$sessionId] = @{ pack = $candidate; last_used = [int][double]::Parse((Get-Date -UFormat %s)) }
+            $state.session_packs = $sessionPacks
+            $stateDirty = $true
+        } else {
+            # Pack missing, use default and clean up
+            $activePack = $config.active_pack
+            if (-not $activePack) { $activePack = "peon" }
+            $sessionPacks.Remove($sessionId)
+            $state.session_packs = $sessionPacks
+            $stateDirty = $true
+        }
+    } else {
+        # No assignment: check session_packs["default"] (Cursor users without conversation_id)
+        $defaultData = $sessionPacks.default
+        if ($defaultData) {
+            $candidate = if ($defaultData -is [hashtable]) { $defaultData.pack } else { $defaultData }
+            $candidateDir = Join-Path $InstallDir "packs\$candidate"
+            if ($candidate -and (Test-Path $candidateDir -PathType Container)) {
+                $activePack = $candidate
+            } else {
+                $activePack = $config.active_pack
+                if (-not $activePack) { $activePack = "peon" }
+            }
+        } else {
+            $activePack = $config.active_pack
+            if (-not $activePack) { $activePack = "peon" }
+        }
+    }
+} elseif ($config.pack_rotation -and $config.pack_rotation.Count -gt 0) {
+    # Automatic rotation
     $activePack = $config.pack_rotation | Get-Random
 }
 
@@ -612,6 +717,118 @@ foreach ($evt in $events) {
 $settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile -Encoding UTF8
 Write-Host "  Hooks registered for: $($events -join ', ')" -ForegroundColor Green
 
+# --- Register beforeSubmitPrompt hook for /peon-ping-use command ---
+Write-Host "  Registering beforeSubmitPrompt hook for /peon-ping-use..."
+
+$beforeSubmitHookPath = Join-Path $InstallDir "scripts\hook-handle-use.ps1"
+$beforeSubmitCmd = "powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$beforeSubmitHookPath`""
+
+# Reload settings to ensure we have the latest
+$settings = Get-Content $SettingsFile -Raw | ConvertFrom-Json
+
+$beforeSubmitHook = [PSCustomObject]@{
+    type = "command"
+    command = $beforeSubmitCmd
+    timeout = 5
+}
+
+$beforeSubmitEntry = [PSCustomObject]@{
+    matcher = ""
+    hooks = @($beforeSubmitHook)
+}
+
+$eventHooks = @()
+if ($settings.hooks | Get-Member -Name "beforeSubmitPrompt" -MemberType NoteProperty) {
+    # Remove existing handle-use entries, keep others
+    $eventHooks = @($settings.hooks.beforeSubmitPrompt | Where-Object {
+        $dominated = $false
+        foreach ($h in $_.hooks) {
+            if ($h.command -and $h.command -match "hook-handle-use") {
+                $dominated = $true
+            }
+        }
+        -not $dominated
+    })
+}
+$eventHooks += $beforeSubmitEntry
+
+if ($settings.hooks | Get-Member -Name "beforeSubmitPrompt" -MemberType NoteProperty) {
+    $settings.hooks.beforeSubmitPrompt = $eventHooks
+} else {
+    $settings.hooks | Add-Member -NotePropertyName "beforeSubmitPrompt" -NotePropertyValue $eventHooks
+}
+
+$settings | ConvertTo-Json -Depth 10 | Set-Content $SettingsFile -Encoding UTF8
+Write-Host "  beforeSubmitPrompt hook registered" -ForegroundColor Green
+
+# --- Register Cursor hooks if ~/.cursor exists ---
+$CursorDir = Join-Path $env:USERPROFILE ".cursor"
+$CursorHooksFile = Join-Path $CursorDir "hooks.json"
+
+if (Test-Path $CursorDir) {
+    Write-Host ""
+    Write-Host "Detected Cursor IDE installation, registering hooks..."
+    
+    # Load or create Cursor hooks.json
+    $cursorData = [PSCustomObject]@{
+        version = 1
+        hooks = [PSCustomObject]@{}
+    }
+    
+    if (Test-Path $CursorHooksFile) {
+        try {
+            $content = Get-Content $CursorHooksFile -Raw
+            if ($content) {
+                $cursorData = $content | ConvertFrom-Json
+            }
+        } catch {
+            # Parse error, use default
+        }
+    }
+    
+    # Ensure $cursorData is valid and has required structure
+    if (-not $cursorData) {
+        $cursorData = [PSCustomObject]@{
+            version = 1
+            hooks = [PSCustomObject]@{}
+        }
+    }
+    
+    if (-not ($cursorData.PSObject.Properties.Name -contains "version")) {
+        $cursorData | Add-Member -NotePropertyName "version" -NotePropertyValue 1
+    }
+    if (-not ($cursorData.PSObject.Properties.Name -contains "hooks")) {
+        $cursorData | Add-Member -NotePropertyName "hooks" -NotePropertyValue ([PSCustomObject]@{})
+    }
+    
+    # Create Cursor beforeSubmitPrompt hook (simpler format than Claude Code)
+    $cursorBeforeSubmitHook = [PSCustomObject]@{
+        command = $beforeSubmitCmd
+        timeout = 5
+    }
+    
+    $cursorEventHooks = @()
+    if ($cursorData.hooks.PSObject.Properties.Name -contains "beforeSubmitPrompt") {
+        # Remove existing handle-use entries, keep others
+        $cursorEventHooks = @($cursorData.hooks.beforeSubmitPrompt | Where-Object {
+            -not ($_.command -and $_.command -match "hook-handle-use")
+        })
+    }
+    $cursorEventHooks += $cursorBeforeSubmitHook
+    
+    if ($cursorData.hooks.PSObject.Properties.Name -contains "beforeSubmitPrompt") {
+        $cursorData.hooks.beforeSubmitPrompt = $cursorEventHooks
+    } else {
+        $cursorData.hooks | Add-Member -NotePropertyName "beforeSubmitPrompt" -NotePropertyValue $cursorEventHooks
+    }
+    
+    # Ensure directory exists
+    New-Item -ItemType Directory -Path $CursorDir -Force | Out-Null
+    
+    $cursorData | ConvertTo-Json -Depth 10 | Set-Content $CursorHooksFile -Encoding UTF8
+    Write-Host "  Cursor beforeSubmitPrompt hook registered" -ForegroundColor Green
+}
+
 # --- Install skills ---
 Write-Host ""
 Write-Host "Installing skills..."
@@ -620,7 +837,7 @@ $skillsSourceDir = Join-Path $ScriptDir "skills"
 $skillsTargetDir = Join-Path $ClaudeDir "skills"
 New-Item -ItemType Directory -Path $skillsTargetDir -Force | Out-Null
 
-$skillNames = @("peon-ping-toggle", "peon-ping-config")
+$skillNames = @("peon-ping-toggle", "peon-ping-config", "peon-ping-use")
 
 if (Test-Path $skillsSourceDir) {
     # Local install: copy from repo

@@ -1013,6 +1013,7 @@ JSON
 
 @test "devcontainer SessionStart shows relay guidance when relay unavailable" {
   export PLATFORM=devcontainer
+  rm -f "$TEST_DIR/.relay_available"  # Remove to simulate relay unavailable
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
   [[ "$PEON_STDERR" == *"relay not reachable"* ]]
@@ -1113,6 +1114,7 @@ JSON
 
 @test "ssh SessionStart shows relay guidance when relay unavailable" {
   export PLATFORM=ssh
+  rm -f "$TEST_DIR/.relay_available"  # Remove to simulate relay unavailable
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
   [ "$PEON_EXIT" -eq 0 ]
   [[ "$PEON_STDERR" == *"SSH session detected"* ]]

@@ -111,7 +111,17 @@ fi
 # --- Detect host platform ---
 case "$(uname -s)" in
   Darwin) HOST_PLATFORM="mac" ;;
-  Linux)  HOST_PLATFORM="linux" ;;
+  Linux)
+    # Check for Docker/devcontainer BEFORE checking for WSL
+    # (devcontainers on WSL2 have both indicators)
+    if [ -f /.dockerenv ]; then
+      HOST_PLATFORM="linux"
+    elif grep -qi microsoft /proc/version 2>/dev/null; then
+      HOST_PLATFORM="wsl"
+    else
+      HOST_PLATFORM="linux"
+    fi ;;
+  MINGW*|MSYS*|CYGWIN*) HOST_PLATFORM="windows" ;;
   *)      HOST_PLATFORM="unknown" ;;
 esac
 
@@ -194,6 +204,40 @@ def play_sound_on_host(path, volume):
                 )
                 return
         print(f"  WARNING: no audio backend found on host", file=sys.stderr)
+    elif HOST_PLATFORM in ("wsl", "windows"):
+        # Use PowerShell MediaPlayer on Windows/WSL
+        # Convert WSL path to Windows path if needed
+        win_path = path
+        if HOST_PLATFORM == "wsl" and shutil.which("wslpath"):
+            try:
+                win_path = subprocess.check_output(
+                    ["wslpath", "-w", path],
+                    text=True, stderr=subprocess.DEVNULL
+                ).strip()
+            except subprocess.CalledProcessError:
+                pass
+        
+        # Use win-play.ps1 if available, otherwise inline PowerShell
+        win_play_script = os.path.join(os.path.dirname(PEON_DIR), "scripts", "win-play.ps1")
+        if os.path.isfile(win_play_script):
+            subprocess.Popen(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+                 "-File", win_play_script, win_path, vol],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        else:
+            # Fallback: inline PowerShell
+            vol_percent = max(0, min(100, int(float(vol) * 100)))
+            subprocess.Popen(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                 f"Add-Type -AssemblyName PresentationCore; "
+                 f"$mp = New-Object System.Windows.Media.MediaPlayer; "
+                 f"$mp.Volume = {vol}; "
+                 f"$mp.Open([uri]'{win_path}'); "
+                 f"$mp.Play(); "
+                 f"Start-Sleep -Seconds 5"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
 
 
 def send_notification_on_host(title, message, color="red"):

@@ -13,10 +13,12 @@ detect_platform() {
         echo "mac"
       fi ;;
     Linux)
-      if grep -qi microsoft /proc/version 2>/dev/null; then
-        echo "wsl"
-      elif [ "${REMOTE_CONTAINERS:-}" = "true" ] || [ "${CODESPACES:-}" = "true" ]; then
+      # Check for devcontainer/Docker BEFORE checking for WSL
+      # (devcontainers on WSL2 have both indicators)
+      if [ "${REMOTE_CONTAINERS:-}" = "true" ] || [ "${CODESPACES:-}" = "true" ] || [ -f /.dockerenv ]; then
         echo "devcontainer"
+      elif grep -qi microsoft /proc/version 2>/dev/null; then
+        echo "wsl"
       elif [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_CLIENT:-}" ]; then
         echo "ssh"
       else

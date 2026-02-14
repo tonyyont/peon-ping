@@ -85,10 +85,12 @@ detect_platform() {
         echo "mac"
       fi ;;
     Linux)
-      if grep -qi microsoft /proc/version 2>/dev/null; then
-        echo "wsl"
-      elif [ "${REMOTE_CONTAINERS:-}" = "true" ] || [ "${CODESPACES:-}" = "true" ]; then
+      # Check for devcontainer/Docker BEFORE checking for WSL
+      # (devcontainers on WSL2 have both indicators)
+      if [ "${REMOTE_CONTAINERS:-}" = "true" ] || [ "${CODESPACES:-}" = "true" ] || [ -f /.dockerenv ]; then
         echo "devcontainer"
+      elif grep -qi microsoft /proc/version 2>/dev/null; then
+        echo "wsl"
       elif [ -n "${SSH_CONNECTION:-}" ] || [ -n "${SSH_CLIENT:-}" ]; then
         echo "ssh"
       else
@@ -177,10 +179,15 @@ fi
 if [ ! -d "$BASE_DIR" ]; then
   if [ "$LOCAL_MODE" = true ]; then
     echo "Error: .claude/ not found in current directory. Is this a Claude Code project?"
+    exit 1
+  elif [ "$PLATFORM" = "devcontainer" ] || [ "$PLATFORM" = "ssh" ]; then
+    # In devcontainers/SSH, Claude Code isn't installed locally - create the directory
+    echo "Creating $BASE_DIR for remote session..."
+    mkdir -p "$BASE_DIR"
   else
     echo "Error: $BASE_DIR not found. Is Claude Code installed?"
+    exit 1
   fi
-  exit 1
 fi
 
 remove_existing_install() {

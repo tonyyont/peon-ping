@@ -513,21 +513,31 @@ Set-Content -Path $hookScriptPath -Value $hookScript -Encoding UTF8
 # --- Install CLI shortcut ---
 $peonCli = @"
 @echo off
-setlocal
-set "cmd=%~1"
-if "%cmd%"=="" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.claude\hooks\peon-ping\peon.ps1" --help
-) else (
-    shift
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.claude\hooks\peon-ping\peon.ps1" %cmd% %1 %2 %3
-)
+powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "& '%USERPROFILE%\.claude\hooks\peon-ping\peon.ps1' %*"
 "@
 $cliBinDir = Join-Path $env:USERPROFILE ".local\bin"
 if (-not (Test-Path $cliBinDir)) {
     New-Item -ItemType Directory -Path $cliBinDir -Force | Out-Null
 }
 $cliBatPath = Join-Path $cliBinDir "peon.cmd"
-Set-Content -Path $cliBatPath -Value $peonCli -Encoding UTF8
+# Use UTF-8 without BOM to support special characters while avoiding BOM issues
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllLines($cliBatPath, $peonCli.Split("`n"), $utf8NoBom)
+
+# Also create a bash-compatible script for Git Bash / WSL
+# Use the actual Windows path (resolved at install time) to avoid path translation issues
+$peonPs1Path = Join-Path $InstallDir "peon.ps1"
+$peonShScript = @"
+#!/usr/bin/env bash
+# peon-ping CLI wrapper for Git Bash / WSL / Unix shells on Windows
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "& '$peonPs1Path' `$*"
+"@
+$peonShPath = Join-Path $cliBinDir "peon"
+[System.IO.File]::WriteAllLines($peonShPath, $peonShScript.Split("`n"), $utf8NoBom)
+# Make executable (for Git Bash)
+if (Get-Command "icacls" -ErrorAction SilentlyContinue) {
+    icacls $peonShPath /grant:r "$env:USERNAME:(RX)" | Out-Null
+}
 
 # Add to PATH if not already there
 $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")

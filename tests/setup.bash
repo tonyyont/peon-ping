@@ -146,6 +146,21 @@ SCRIPT
 for arg in "$@"; do
   if [[ "$arg" == *"/play?"* ]] || [[ "$arg" == *"/health"* ]]; then
     echo "RELAY: $*" >> "${CLAUDE_PEON_DIR}/relay_curl.log"
+    # For /play requests, also log to afplay.log so afplay_was_called works
+    if [[ "$arg" == *"/play?"* ]]; then
+      # Extract file path from URL query string and decode %2F to /
+      file=$(echo "$arg" | sed -n 's/.*file=\([^&]*\).*/\1/p' | sed 's/%2F/\//g')
+      # Extract volume from headers (look for -H X-Volume: in args)
+      volume="0.5"
+      for i in "$@"; do
+        if [[ "$prev" == "-H" ]] && [[ "$i" == "X-Volume:"* ]]; then
+          volume=$(echo "$i" | cut -d: -f2 | tr -d ' ')
+        fi
+        prev="$i"
+      done
+      # Write in afplay format: -v 0.5 /full/path/to/sound.wav
+      echo "-v $volume ${CLAUDE_PEON_DIR}/$file" >> "${CLAUDE_PEON_DIR}/afplay.log"
+    fi
     if [ -f "${CLAUDE_PEON_DIR}/.relay_available" ]; then
       exit 0
     else
@@ -182,11 +197,17 @@ SCRIPT
 
   export PATH="$MOCK_BIN:$PATH"
 
+  # Mock relay as available for devcontainer/SSH tests
+  # (Tests running in devcontainer need this to prevent "relay not reachable" errors)
+  touch "$TEST_DIR/.relay_available"
+
   # Locate peon.sh (relative to this test file)
   PEON_SH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/peon.sh"
 }
 
 teardown_test_env() {
+  # Clean up relay mock
+  rm -f "$TEST_DIR/.relay_available" 2>/dev/null || true
   rm -rf "$TEST_DIR" 2>/dev/null || true
 }
 

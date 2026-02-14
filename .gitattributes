@@ -1,0 +1,23 @@
+# Normalize line endings for all text files
+* text=auto
+
+# Force LF for shell scripts (critical for Unix execution)
+*.sh text eol=lf
+*.bash text eol=lf
+*.fish text eol=lf
+*.bats text eol=lf
+
+# Force CRLF for Windows scripts
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf

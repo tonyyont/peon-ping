@@ -161,6 +161,7 @@ Config location depends on install mode:
 
 - **volume**: 0.0–1.0 (quiet enough for the office)
 - **desktop_notifications**: `true`/`false` — toggle desktop notification popups independently from sounds (default: `true`)
+- **wsl_toast_notifications**: `true`/`false` — on WSL, use native Windows toast notifications instead of the Windows Forms popup. Toasts don't steal focus and appear in the Action Center. (default: `true`)
 - **categories**: Toggle individual CESP sound categories on/off (e.g. `"session.start": false` to disable greeting sounds)
 - **annoyed_threshold / annoyed_window_seconds**: How many prompts in N seconds triggers the `user.spam` easter egg
 - **silent_window_seconds**: Suppress `task.complete` sounds and notifications for tasks shorter than N seconds. (e.g. `10` to only hear sounds for tasks that take longer than 10 seconds)

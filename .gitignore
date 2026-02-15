@@ -2,6 +2,9 @@
 .env
 node_modules/
 video/out/
+video/public/sounds/
+video/src/*Preview.tsx
+!video/src/KirovPreview.tsx
 firebase-debug.log
 .claude/
 .env*.local

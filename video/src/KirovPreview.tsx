@@ -15,30 +15,30 @@ const TIMELINE = [
   { frame: 0, type: "title" as const },
   { frame: 75, type: "terminal-start" as const },
   { frame: 90, type: "line" as const, text: "$ claude", style: "cmd" as const },
-  { frame: 120, type: "sound-line" as const, text: '🔊 "Lieutenant Kerrigan reporting"', sound: "KerriganReporting.mp3", label: "— session started" },
-  { frame: 170, type: "line" as const, text: "> Scan the codebase for security vulns", style: "cmd" as const },
+  { frame: 120, type: "sound-line" as const, text: '🔊 "Kirov reporting"', sound: "KirovReporting.mp3", label: "— session started" },
+  { frame: 170, type: "line" as const, text: "> Rewrite the API layer in Rust", style: "cmd" as const },
   { frame: 210, type: "line" as const, text: "  Claude is working...", style: "dim" as const },
-  { frame: 240, type: "sound-line" as const, text: '🔊 "I gotcha"', sound: "IGotcha.mp3", label: "— reading files" },
-  { frame: 290, type: "line" as const, text: "  [you switch to browser]", style: "dim" as const },
-  { frame: 330, type: "sound-line" as const, text: '🔊 "What now?"', sound: "WhatNow.mp3", label: "— permission needed" },
+  { frame: 240, type: "sound-line" as const, text: '🔊 "Setting new course"', sound: "SettingNewCourse.mp3", label: "— reading files" },
+  { frame: 290, type: "line" as const, text: "  [you switch to Slack]", style: "dim" as const },
+  { frame: 330, type: "sound-line" as const, text: '🔊 "Acknowledged"', sound: "Acknowledged.mp3", label: "— permission needed" },
   { frame: 390, type: "line" as const, text: "  [you hear it, switch back, approve]", style: "dim" as const },
   { frame: 430, type: "line" as const, text: "  Claude continues working...", style: "dim" as const },
-  { frame: 470, type: "sound-line" as const, text: '🔊 "Thinking the same thing"', sound: "ThinkingSameThing.mp3", label: "— analyzing" },
-  { frame: 530, type: "sound-line" as const, text: '🔊 "I\'m waiting on you"', sound: "WaitingOnYou.mp3", label: "— task complete" },
+  { frame: 470, type: "sound-line" as const, text: '🔊 "Maneuver props engaged"', sound: "ManeuverPropsEngaged.mp3", label: "— analyzing code" },
+  { frame: 530, type: "sound-line" as const, text: '🔊 "Bombardiers to your stations!"', sound: "BombardiersToYourStations.mp3", label: "— task complete" },
   { frame: 580, type: "line" as const, text: "> ", style: "cursor" as const },
-  { frame: 620, type: "line" as const, text: "> Push to main without tests", style: "cmd" as const },
-  { frame: 660, type: "line" as const, text: "  Error: Tests required", style: "error" as const },
-  { frame: 680, type: "sound-line" as const, text: '🔊 [death sound]', sound: "Death1.mp3", label: "— error" },
+  { frame: 620, type: "line" as const, text: "> Drop tables in production", style: "cmd" as const },
+  { frame: 660, type: "line" as const, text: "  Error: Permission denied", style: "error" as const },
+  { frame: 680, type: "sound-line" as const, text: '🔊 "She\'s going to blow!"', sound: "ShesGoingToBlow.mp3", label: "— error" },
   { frame: 740, type: "outro" as const },
 ];
 
-// Zerg purple palette
+// Soviet Red Alert palette
 const BG = "#1a1b26";
 const BAR_BG = "#0c0d14";
 const GREEN = "#4ade80";
 const WC3_GOLD = "#ffab01";
 const WC3_GOLD_DIM = "rgba(255, 171, 1, 0.3)";
-const ZERG_PURPLE = "#7c3aed";
+const SOVIET_RED = "#cc2936";
 const DIM = "#505a79";
 const BRIGHT = "#e0e8ff";
 
@@ -92,8 +92,8 @@ const SoundBadge: React.FC<{ label: string }> = ({ label }) => {
 };
 
 const TerminalChrome: React.FC<{ children: React.ReactNode; tabTitle: string }> = ({ children, tabTitle }) => (
-  <div style={{ width: 940, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(124,58,237,0.15)", boxShadow: "0 0 60px rgba(0,0,0,0.6), 0 0 4px rgba(124,58,237,0.1)" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 18px", backgroundColor: BAR_BG, borderBottom: "1px solid rgba(124,58,237,0.1)" }}>
+  <div style={{ width: 940, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(204,41,54,0.15)", boxShadow: "0 0 60px rgba(0,0,0,0.6), 0 0 4px rgba(204,41,54,0.1)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 18px", backgroundColor: BAR_BG, borderBottom: "1px solid rgba(204,41,54,0.1)" }}>
       <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#ff5f57" }} />
       <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#febc2e" }} />
       <div style={{ width: 14, height: 14, borderRadius: "50%", backgroundColor: "#28c840" }} />
@@ -119,9 +119,9 @@ const TitleCard: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0a0a0f", justifyContent: "center", alignItems: "center", opacity: exitOp }}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${ZERG_PURPLE}, transparent)` }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${ZERG_PURPLE}, transparent)` }} />
-      <div style={{ position: "absolute", top: "50%", left: "50%", width: 600, height: 600, transform: "translate(-50%, -50%)", borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${SOVIET_RED}, transparent)` }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${SOVIET_RED}, transparent)` }} />
+      <div style={{ position: "absolute", top: "50%", left: "50%", width: 600, height: 600, transform: "translate(-50%, -50%)", borderRadius: "50%", background: "radial-gradient(circle, rgba(204,41,54,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       <div style={{ position: "absolute", top: 50, display: "flex", alignItems: "center", gap: 12, opacity: logoSpring, transform: `translateY(${interpolate(logoSpring, [0, 1], [10, 0])}px)` }}>
         <Img src={staticFile("peon-portrait.gif")} style={{ width: 48, height: 48, borderRadius: 6, border: `2px solid ${WC3_GOLD}`, boxShadow: "0 0 12px rgba(255,171,1,0.25)" }} />
@@ -129,9 +129,9 @@ const TitleCard: React.FC = () => {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: titleSpring, transform: `translateY(${interpolate(titleSpring, [0, 1], [20, 0])}px)` }}>
-        <div style={{ fontFamily: "monospace", fontSize: 20, color: ZERG_PURPLE, letterSpacing: 6, textTransform: "uppercase", marginBottom: 16, opacity: subSpring }}>sound pack</div>
-        <div style={{ fontFamily: "Georgia, 'Palatino Linotype', serif", fontSize: 72, fontWeight: 700, color: "#fff", textShadow: "3px 3px 0 rgba(0,0,0,0.8)", textAlign: "center", lineHeight: 1.2 }}>Sarah Kerrigan</div>
-        <div style={{ fontFamily: "Georgia, serif", fontSize: 36, color: "rgba(255,255,255,0.5)", marginTop: 12, opacity: subSpring }}>StarCraft</div>
+        <div style={{ fontFamily: "monospace", fontSize: 20, color: SOVIET_RED, letterSpacing: 6, textTransform: "uppercase", marginBottom: 16, opacity: subSpring }}>sound pack</div>
+        <div style={{ fontFamily: "Georgia, 'Palatino Linotype', serif", fontSize: 72, fontWeight: 700, color: "#fff", textShadow: "3px 3px 0 rgba(0,0,0,0.8)", textAlign: "center", lineHeight: 1.2 }}>Kirov Airship</div>
+        <div style={{ fontFamily: "Georgia, serif", fontSize: 36, color: "rgba(255,255,255,0.5)", marginTop: 12, opacity: subSpring }}>Red Alert 2</div>
       </div>
 
       <div style={{ position: "absolute", bottom: 40, left: 40, display: "flex", alignItems: "center", gap: 8, opacity: subSpring }}>
@@ -155,9 +155,9 @@ const OutroCard: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#0a0a0f", justifyContent: "center", alignItems: "center" }}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${ZERG_PURPLE}, transparent)` }} />
-      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${ZERG_PURPLE}, transparent)` }} />
-      <div style={{ position: "absolute", top: "40%", left: "50%", width: 500, height: 500, transform: "translate(-50%, -50%)", borderRadius: "50%", background: "radial-gradient(circle, rgba(124,58,237,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${SOVIET_RED}, transparent)` }} />
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${SOVIET_RED}, transparent)` }} />
+      <div style={{ position: "absolute", top: "40%", left: "50%", width: 500, height: 500, transform: "translate(-50%, -50%)", borderRadius: "50%", background: "radial-gradient(circle, rgba(204,41,54,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", opacity: enter, transform: `scale(${interpolate(enter, [0, 1], [0.9, 1])})` }}>
         <div style={{ marginBottom: 30, display: "flex", alignItems: "center", gap: 14, opacity: logoEnter, transform: `translateY(${interpolate(logoEnter, [0, 1], [10, 0])}px)` }}>
@@ -180,7 +180,7 @@ const OutroCard: React.FC = () => {
   );
 };
 
-export const KerriganPreview: React.FC = () => {
+export const KirovPreview: React.FC = () => {
   const frame = useCurrentFrame();
 
   let tabTitle = "my-project: ready";
@@ -209,7 +209,7 @@ export const KerriganPreview: React.FC = () => {
                     {event.style === "cmd" ? (
                       <TypedText text={event.text!} startFrame={event.frame} color={event.text!.startsWith("$") || event.text!.startsWith(">") ? GREEN : BRIGHT} />
                     ) : event.style === "error" ? (
-                      <span style={{ color: ZERG_PURPLE }}>{event.text}</span>
+                      <span style={{ color: SOVIET_RED }}>{event.text}</span>
                     ) : event.style === "cursor" ? (
                       <span><span style={{ color: GREEN }}>&gt; </span><Cursor /></span>
                     ) : (
@@ -240,12 +240,12 @@ export const KerriganPreview: React.FC = () => {
 
       {TIMELINE.filter((e) => e.type === "sound-line" && e.sound).map((event, i) => {
         const durations: Record<string, number> = {
-          "KerriganReporting.mp3": 49,
-          "IGotcha.mp3": 27,
-          "WhatNow.mp3": 28,
-          "ThinkingSameThing.mp3": 49,
-          "WaitingOnYou.mp3": 49,
-          "Death1.mp3": 75,
+          "KirovReporting.mp3": 46,
+          "SettingNewCourse.mp3": 40,
+          "Acknowledged.mp3": 32,
+          "ManeuverPropsEngaged.mp3": 53,
+          "BombardiersToYourStations.mp3": 54,
+          "ShesGoingToBlow.mp3": 42,
         };
         const dur = durations[event.sound!] ?? 50;
         return (

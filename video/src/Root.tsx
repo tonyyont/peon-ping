@@ -6,6 +6,9 @@ import { GladosPreview } from "./GladosPreview";
 import { SheogorathPreview } from "./SheogorathPreview";
 import { AxePreview } from "./AxePreview";
 import { BattlecruiserPreview } from "./BattlecruiserPreview";
+import { DukeNukemPreview } from "./DukeNukemPreview";
+import { KirovPreview } from "./KirovPreview";
+import { HelldiversPreview } from "./HelldiversPreview";
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -61,6 +64,30 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="BattlecruiserPreview"
         component={BattlecruiserPreview}
+        durationInFrames={840}
+        fps={30}
+        width={1080}
+        height={1080}
+      />
+      <Composition
+        id="DukeNukemPreview"
+        component={DukeNukemPreview}
+        durationInFrames={840}
+        fps={30}
+        width={1080}
+        height={1080}
+      />
+      <Composition
+        id="KirovPreview"
+        component={KirovPreview}
+        durationInFrames={840}
+        fps={30}
+        width={1080}
+        height={1080}
+      />
+      <Composition
+        id="HelldiversPreview"
+        component={HelldiversPreview}
         durationInFrames={840}
         fps={30}
         width={1080}

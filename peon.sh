@@ -191,7 +191,7 @@ play_sound() {
       else
         return 0
       fi
-      powershell.exe -NoProfile -NonInteractive -Command "
+      setsid powershell.exe -NoProfile -NonInteractive -Command "
         (New-Object Media.SoundPlayer '${tmpdir}peon-ping-sound.wav').PlaySync()
       " &>/dev/null &
       save_sound_pid $!

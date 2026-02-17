@@ -768,6 +768,78 @@ JSON
   [ -d "$TEST_DIR/packs/peon" ]
 }
 
+@test "packs remove --all removes all non-active packs" {
+  # Add a third pack
+  mkdir -p "$TEST_DIR/packs/glados/sounds"
+  cat > "$TEST_DIR/packs/glados/manifest.json" <<'JSON'
+{
+  "name": "glados",
+  "display_name": "GLaDOS",
+  "categories": {
+    "session.start": { "sounds": [{ "file": "Hello1.wav", "label": "Hello" }] }
+  }
+}
+JSON
+  touch "$TEST_DIR/packs/glados/sounds/Hello1.wav"
+
+  echo "y" | bash "$PEON_SH" packs remove --all
+  [ ! -d "$TEST_DIR/packs/sc_kerrigan" ]
+  [ ! -d "$TEST_DIR/packs/glados" ]
+  # Active pack remains
+  [ -d "$TEST_DIR/packs/peon" ]
+}
+
+@test "packs remove --all with only active pack errors" {
+  # Remove all non-active packs first
+  rm -rf "$TEST_DIR/packs/sc_kerrigan"
+
+  run bash "$PEON_SH" packs remove --all
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"No packs to remove"* ]]
+  # Active pack still present
+  [ -d "$TEST_DIR/packs/peon" ]
+}
+
+@test "packs remove --all cleans pack_rotation" {
+  # Add a third pack
+  mkdir -p "$TEST_DIR/packs/glados/sounds"
+  cat > "$TEST_DIR/packs/glados/manifest.json" <<'JSON'
+{
+  "name": "glados",
+  "display_name": "GLaDOS",
+  "categories": {
+    "session.start": { "sounds": [{ "file": "Hello1.wav", "label": "Hello" }] }
+  }
+}
+JSON
+  touch "$TEST_DIR/packs/glados/sounds/Hello1.wav"
+
+  # Set up pack_rotation including non-active packs
+  python3 -c "
+import json
+cfg = json.load(open('${TEST_DIR}/config.json'))
+cfg['pack_rotation'] = ['peon', 'sc_kerrigan', 'glados']
+json.dump(cfg, open('${TEST_DIR}/config.json', 'w'), indent=2)
+"
+
+  echo "y" | bash "$PEON_SH" packs remove --all
+
+  # Verify rotation only has active pack
+  run python3 -c "
+import json
+cfg = json.load(open('${TEST_DIR}/config.json'))
+rotation = cfg.get('pack_rotation', [])
+print(','.join(rotation))
+"
+  [[ "$output" == "peon" ]]
+}
+
+@test "help shows packs remove --all" {
+  run bash "$PEON_SH" help
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"packs remove --all"* ]]
+}
+
 @test "help shows packs remove command" {
   run bash "$PEON_SH" help
   [ "$status" -eq 0 ]

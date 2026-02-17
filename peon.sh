@@ -865,7 +865,36 @@ print(f'peon-ping: switched to {next_pack} ({display})')
         sync_adapter_configs; exit 0 ;;
       remove)
         REMOVE_ARG="${3:-}"
-        if [ -n "$REMOVE_ARG" ]; then
+        if [ "$REMOVE_ARG" = "--all" ]; then
+          PACKS_TO_REMOVE=$(python3 -c "
+import json, os, sys
+
+config_path = '$CONFIG'
+peon_dir = '$PEON_DIR'
+packs_dir = os.path.join(peon_dir, 'packs')
+
+try:
+    cfg = json.load(open(config_path))
+except Exception:
+    cfg = {}
+active = cfg.get('active_pack', 'peon')
+
+installed = sorted([
+    d for d in os.listdir(packs_dir)
+    if os.path.isdir(os.path.join(packs_dir, d)) and (
+        os.path.exists(os.path.join(packs_dir, d, 'openpeon.json')) or
+        os.path.exists(os.path.join(packs_dir, d, 'manifest.json'))
+    )
+])
+
+removable = [p for p in installed if p != active]
+if not removable:
+    print(f'No packs to remove — only the active pack (\"{active}\") is installed.', file=sys.stderr)
+    sys.exit(1)
+
+print(','.join(removable))
+" 2>&1) || { echo "$PACKS_TO_REMOVE" >&2; exit 1; }
+        elif [ -n "$REMOVE_ARG" ]; then
           PACKS_TO_REMOVE=$(REMOVE_ARG="$REMOVE_ARG" python3 -c "
 import json, os, sys
 
@@ -913,6 +942,7 @@ print(','.join(valid))
 " 2>&1) || { echo "$PACKS_TO_REMOVE" >&2; exit 1; }
         else
           echo "Usage: peon packs remove <pack1,pack2,...>" >&2
+          echo "       peon packs remove --all" >&2
           echo "Run 'peon packs list' to see installed packs." >&2
           exit 1
         fi
@@ -1335,6 +1365,7 @@ Pack management:
   packs use <name>        Switch to a specific pack
   packs next              Cycle to the next pack
   packs remove <p1,p2>    Remove specific packs
+  packs remove --all      Remove all packs except the active one
 
 Mobile notifications:
   mobile ntfy <topic>  Set up ntfy.sh push notifications

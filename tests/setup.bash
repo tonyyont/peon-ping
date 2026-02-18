@@ -124,6 +124,9 @@ echo "$@" >> "${CLAUDE_PEON_DIR}/afplay.log"
 SCRIPT
   chmod +x "$MOCK_BIN/afplay"
 
+  # Mock peon-play — same log format as afplay mock
+  cp "$MOCK_BIN/afplay" "$MOCK_BIN/peon-play"
+
   # Mock Linux audio backends — log calls instead of playing sound
   for player in pw-play paplay ffplay mpv play aplay; do
     cat > "$MOCK_BIN/$player" <<'SCRIPT'
@@ -307,6 +310,21 @@ afplay_call_count() {
   else
     echo "0"
   fi
+}
+
+# Helper: install peon-play mock at $PEON_DIR/scripts/peon-play (where peon.sh looks)
+install_peon_play_mock() {
+  mkdir -p "$TEST_DIR/scripts"
+  cat > "$TEST_DIR/scripts/peon-play" <<'SCRIPT'
+#!/bin/bash
+echo "$@" >> "${CLAUDE_PEON_DIR}/peon-play.log"
+SCRIPT
+  chmod +x "$TEST_DIR/scripts/peon-play"
+}
+
+# Helper: check if peon-play was called (via $PEON_DIR/scripts/peon-play)
+peon_play_was_called() {
+  [ -f "$TEST_DIR/peon-play.log" ] && [ -s "$TEST_DIR/peon-play.log" ]
 }
 
 # Helper: check if a Linux audio player was called

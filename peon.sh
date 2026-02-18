@@ -173,10 +173,14 @@ play_sound() {
   kill_previous_sound
   case "$PLATFORM" in
     mac)
+      local player="afplay"
+      if [ -x "$PEON_DIR/scripts/peon-play" ] && [ "$USE_SOUND_EFFECTS_DEVICE" != "false" ]; then
+        player="$PEON_DIR/scripts/peon-play"
+      fi
       if [ "${PEON_TEST:-0}" = "1" ]; then
-        afplay -v "$vol" "$file" >/dev/null 2>&1
+        "$player" -v "$vol" "$file" >/dev/null 2>&1
       else
-        nohup afplay -v "$vol" "$file" >/dev/null 2>&1 &
+        nohup "$player" -v "$vol" "$file" >/dev/null 2>&1 &
         save_sound_pid $!
       fi
       ;;
@@ -1781,6 +1785,7 @@ if str(cfg.get('enabled', True)).lower() == 'false':
 
 volume = cfg.get('volume', 0.5)
 desktop_notif = cfg.get('desktop_notifications', True)
+use_sound_effects_device = cfg.get('use_sound_effects_device', True)
 linux_audio_player = cfg.get('linux_audio_player', '')
 tab_color_cfg = cfg.get('tab_color', {})
 tab_color_enabled = str(tab_color_cfg.get('enabled', True)).lower() != 'false'
@@ -2238,6 +2243,7 @@ print('NOTIFY_COLOR=' + q(notify_color))
 print('MSG=' + q(msg))
 print('DESKTOP_NOTIF=' + ('true' if desktop_notif else 'false'))
 print('NOTIF_STYLE=' + q(cfg.get('notification_style', 'overlay')))
+print('USE_SOUND_EFFECTS_DEVICE=' + q(str(use_sound_effects_device).lower()))
 print('LINUX_AUDIO_PLAYER=' + q(linux_audio_player))
 mn = cfg.get('mobile_notify', {})
 mobile_on = bool(mn and mn.get('service') and mn.get('enabled', True))

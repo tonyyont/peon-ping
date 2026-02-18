@@ -314,6 +314,7 @@ if [ -n "$SCRIPT_DIR" ]; then
     mkdir -p "$INSTALL_DIR/scripts"
     cp "$SCRIPT_DIR/scripts/"*.sh "$INSTALL_DIR/scripts/" 2>/dev/null || true
     cp "$SCRIPT_DIR/scripts/"*.ps1 "$INSTALL_DIR/scripts/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/scripts/"*.swift "$INSTALL_DIR/scripts/" 2>/dev/null || true
   fi
   if [ -f "$SCRIPT_DIR/docs/peon-icon.png" ]; then
     mkdir -p "$INSTALL_DIR/docs"
@@ -349,6 +350,46 @@ else
   fi
 fi
 
+# --- Backfill new config keys on update ---
+# Merge any new keys from the default config template into the user's
+# existing config without overwriting their values.
+if [ "$UPDATING" = true ] && [ -f "$INSTALL_DIR/config.json" ]; then
+  # Determine the source of default config
+  if [ -n "$SCRIPT_DIR" ]; then
+    DEFAULT_CFG="$SCRIPT_DIR/config.json"
+  else
+    DEFAULT_CFG=$(mktemp)
+    curl -fsSL "$REPO_BASE/config.json" -o "$DEFAULT_CFG" 2>/dev/null || true
+  fi
+  if [ -f "$DEFAULT_CFG" ]; then
+    python3 -c "
+import json, sys
+
+try:
+    with open('$DEFAULT_CFG') as f:
+        defaults = json.load(f)
+    with open('$INSTALL_DIR/config.json') as f:
+        user_cfg = json.load(f)
+except Exception:
+    sys.exit(0)
+
+changed = False
+for key, value in defaults.items():
+    if key not in user_cfg:
+        user_cfg[key] = value
+        changed = True
+
+if changed:
+    with open('$INSTALL_DIR/config.json', 'w') as f:
+        json.dump(user_cfg, f, indent=2)
+        f.write('\n')
+    print('Config updated with new defaults')
+" 2>/dev/null || true
+    # Clean up temp file if we downloaded one
+    [ -z "$SCRIPT_DIR" ] && rm -f "$DEFAULT_CFG"
+  fi
+fi
+
 # --- Download sound packs via shared engine ---
 PACK_DL="$INSTALL_DIR/scripts/pack-download.sh"
 chmod +x "$PACK_DL" 2>/dev/null || true
@@ -365,6 +406,22 @@ chmod +x "$INSTALL_DIR/peon.sh"
 chmod +x "$INSTALL_DIR/relay.sh"
 chmod +x "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/scripts/pack-download.sh" 2>/dev/null || true
+
+# --- Build peon-play (macOS Sound Effects device support) ---
+if [ "$PLATFORM" = "mac" ] && command -v swiftc &>/dev/null; then
+  PEON_PLAY_SRC="$INSTALL_DIR/scripts/peon-play.swift"
+  if [ ! -f "$PEON_PLAY_SRC" ] && [ -z "$SCRIPT_DIR" ]; then
+    curl -fsSL "$REPO_BASE/scripts/peon-play.swift" -o "$PEON_PLAY_SRC" 2>/dev/null || true
+  fi
+  if [ -f "$PEON_PLAY_SRC" ]; then
+    echo "Building peon-play (Sound Effects device support)..."
+    swiftc -O -o "$INSTALL_DIR/scripts/peon-play" \
+      "$PEON_PLAY_SRC" \
+      -framework AVFoundation -framework CoreAudio -framework AudioToolbox 2>/dev/null \
+      && echo "  peon-play built successfully" \
+      || echo "  Warning: could not build peon-play, using afplay fallback"
+  fi
+fi
 
 # --- Install skill (slash command) ---
 SKILL_DIR="$BASE_DIR/skills/peon-ping-toggle"
@@ -868,7 +925,19 @@ except Exception:
   TEST_SOUND=$({ ls "$PACK_DIR/sounds/"*.wav "$PACK_DIR/sounds/"*.mp3 "$PACK_DIR/sounds/"*.ogg 2>/dev/null || true; } | head -1)
   if [ -n "$TEST_SOUND" ]; then
     if [ "$PLATFORM" = "mac" ]; then
-      afplay -v 0.3 "$TEST_SOUND"
+      USE_SFX=$(python3 -c "
+import json
+try:
+    c = json.load(open('$INSTALL_DIR/config.json'))
+    print(str(c.get('use_sound_effects_device', True)).lower())
+except Exception:
+    print('true')
+" 2>/dev/null)
+      if [ -x "$INSTALL_DIR/scripts/peon-play" ] && [ "$USE_SFX" != "false" ]; then
+        "$INSTALL_DIR/scripts/peon-play" -v 0.3 "$TEST_SOUND"
+      else
+        afplay -v 0.3 "$TEST_SOUND"
+      fi
     elif [ "$PLATFORM" = "wsl" ]; then
       wpath=$(wslpath -w "$TEST_SOUND")
       # Convert backslashes to forward slashes for file:/// URI

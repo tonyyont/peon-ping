@@ -14,18 +14,23 @@ function run(argv) {
   var iconPath = argv[2] || '';
   var slot     = parseInt(argv[3], 10) || 0;
   var dismiss  = parseFloat(argv[4]) || 4;
-
-  // Capture the frontmost app FIRST — before we register as an accessory app
-  var ws = $.NSWorkspace.sharedWorkspace;
-  var frontApp = ws.frontmostApplication;
-  var targetPID = (frontApp && !frontApp.isNil()) ? frontApp.processIdentifier : 0;
+  // argv[5]: IDE ancestor PID passed from peon.sh (targets the right window even when
+  // the user is in another app). Falls back to frontmost app if not provided.
+  var targetPID = parseInt(argv[5], 10) || 0;
+  if (targetPID === 0) {
+    var ws = $.NSWorkspace.sharedWorkspace;
+    var frontApp = ws.frontmostApplication;
+    targetPID = (frontApp && !frontApp.isNil()) ? frontApp.processIdentifier : 0;
+  }
 
   function activateTarget() {
     if (targetPID > 0) {
-      var app = $.NSRunningApplication.runningApplicationWithProcessIdentifier(targetPID);
-      if (app && !app.isNil()) {
-        app.activateWithOptions($.NSApplicationActivateIgnoringOtherApps);
-      }
+      var script = 'tell application "System Events" to set frontmost of (first process whose unix id is ' + targetPID + ') to true';
+      var task = $.NSTask.alloc.init;
+      task.setLaunchPath('/usr/bin/osascript');
+      task.setArguments($(['-e', script]));
+      task.launch;
+      task.waitUntilExit;
     }
     $.NSApp.terminate(null);
   }

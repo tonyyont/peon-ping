@@ -281,7 +281,17 @@ send_notification() {
             find "$slot_dir" -maxdepth 1 -name 'slot-*' -mmin +1 -exec rm -rf {} + 2>/dev/null
             slot=0; mkdir -p "$slot_dir/slot-0"
           fi
-          osascript -l JavaScript "$overlay_script" "$msg" "$color" "$icon_arg" "$slot" "4" >/dev/null 2>&1 || true
+          # Find the IDE ancestor PID (Cursor/VS Code/Windsurf) so click-to-focus
+          # targets the right window even when the user is in another app.
+          _ide_pid=0
+          _check=$$
+          for _i in 1 2 3 4 5 6 7 8 9 10; do
+            _check=$(ps -p "$_check" -o ppid= 2>/dev/null | tr -d ' ')
+            [ -z "$_check" ] || [ "$_check" = "1" ] || [ "$_check" = "0" ] && break
+            _comm=$(ps -p "$_check" -o comm= 2>/dev/null | tr '[:upper:]' '[:lower:]')
+            case "$_comm" in *cursor*|*"code"*|*windsurf*|*zed*) _ide_pid=$_check; break;; esac
+          done
+          osascript -l JavaScript "$overlay_script" "$msg" "$color" "$icon_arg" "$slot" "4" "$_ide_pid" >/dev/null 2>&1 || true
           rm -rf "$slot_dir/slot-$slot"
         )
         if [ "$use_bg" = true ]; then _run_overlay & else _run_overlay; fi

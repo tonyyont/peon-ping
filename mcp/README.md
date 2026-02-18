@@ -8,6 +8,11 @@ One tool: `play_sound`. The agent calls it with a sound key like `"duke_nukem/Gr
 
 Sound catalog exposed as MCP Resources — the client reads the catalog once, the model knows what's available, no repeated tool calls to browse.
 
+## Requirements
+
+- Node.js 18+
+- peon-ping installed (macOS, Linux, or WSL2)
+
 ## Setup
 
 ```bash

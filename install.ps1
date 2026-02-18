@@ -526,6 +526,12 @@ switch ($hookEvent) {
             $category = "user.spam"
         }
     }
+    "PostToolUseFailure" {
+        $category = "task.error"
+    }
+    "SubagentStart" {
+        $category = "task.acknowledge"
+    }
 }
 
 # Save state
@@ -740,7 +746,7 @@ $peonEntry = [PSCustomObject]@{
     hooks = @($peonHook)
 }
 
-$events = @("SessionStart", "UserPromptSubmit", "Stop", "Notification", "PermissionRequest")
+$events = @("SessionStart", "SessionEnd", "SubagentStart", "UserPromptSubmit", "Stop", "Notification", "PermissionRequest", "PostToolUseFailure", "PreCompact")
 
 foreach ($evt in $events) {
     $eventHooks = @()

@@ -9,7 +9,7 @@
 #   bash adapters/opencode.sh
 #
 # Or directly:
-#   curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/adapters/opencode.sh | bash
 #
 # Uninstall:
 #   bash adapters/opencode.sh --uninstall
@@ -17,8 +17,8 @@
 set -euo pipefail
 
 # --- Config ---
-PLUGIN_URL="https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode/peon-ping.ts"
-REGISTRY_URL="https://peonping.github.io/registry/index.json"
+PLUGIN_URL="https://raw.githubusercontent.com/NSXBet/peon-nsx/main/adapters/opencode/peon-ping.ts"
+REGISTRY_URL="https://nsxbet.github.io/registry/index.json"
 DEFAULT_PACK="peon"
 
 OPENCODE_PLUGINS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/opencode/plugins"

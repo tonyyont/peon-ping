@@ -32,7 +32,7 @@ error() { printf "%sx%s %s\n" "$RED" "$RESET" "$*" >&2; }
 # --- Preflight ---
 if [ ! -f "$PEON_DIR/peon.sh" ]; then
   error "peon.sh not found at $PEON_DIR/peon.sh"
-  error "Install peon-ping first: curl -fsSL peonping.com/install | bash"
+  error "Install peon-ping first: curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh | bash"
   exit 1
 fi
 

@@ -17,7 +17,7 @@ Sound catalog exposed as MCP Resources — the client reads the catalog once, th
 
 ```bash
 # Install peon-ping if you haven't
-curl -fsSL https://peonping.com/install | bash
+curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh | bash
 
 # Install MCP dependencies
 cd mcp && npm install

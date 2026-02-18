@@ -3,7 +3,7 @@
 #
 # Usage:
 #   bash adapters/opencode/setup-icon.sh
-#   bash <(curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode/setup-icon.sh)
+#   bash <(curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/adapters/opencode/setup-icon.sh)
 #
 # Requires: terminal-notifier (brew install terminal-notifier)
 # Uses: sips + iconutil (built-in macOS tools, no extra deps)
@@ -30,7 +30,7 @@ done
 
 if [ -z "$ICON" ]; then
   echo "Error: peon-icon.png not found."
-  echo "Install peon-ping first: brew install PeonPing/tap/peon-ping"
+  echo "Install peon-ping first: brew install NSXBet/tap/peon-nsx"
   exit 1
 fi
 

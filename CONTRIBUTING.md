@@ -97,10 +97,10 @@ git push origin v1.0.0
 
 ### 4. Register your pack
 
-Submit your pack to the [OpenPeon registry](https://github.com/PeonPing/registry):
+Submit your pack to the [OpenPeon registry](https://github.com/NSXBet/registry):
 
-1. Fork [PeonPing/registry](https://github.com/PeonPing/registry)
-2. Add your pack entry to `index.json` (keep alphabetical order — see [registry CONTRIBUTING.md](https://github.com/PeonPing/registry/blob/main/CONTRIBUTING.md))
+1. Fork [NSXBet/registry](https://github.com/NSXBet/registry)
+2. Add your pack entry to `index.json` (keep alphabetical order — see [registry CONTRIBUTING.md](https://github.com/NSXBet/registry/blob/main/CONTRIBUTING.md))
 3. Open a pull request
 
 Once merged, your pack will be installable by everyone and listed on [openpeon.com/packs](https://openpeon.com/packs).

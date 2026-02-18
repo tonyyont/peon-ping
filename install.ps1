@@ -54,8 +54,8 @@ if ($policy -eq "Restricted") {
 $ClaudeDir = Join-Path $env:USERPROFILE ".claude"
 $InstallDir = Join-Path $ClaudeDir "hooks\peon-ping"
 $SettingsFile = Join-Path $ClaudeDir "settings.json"
-$RegistryUrl = "https://peonping.github.io/registry/index.json"
-$RepoBase = "https://raw.githubusercontent.com/PeonPing/peon-ping/main"
+$RegistryUrl = "https://nsxbet.github.io/registry/index.json"
+$RepoBase = "https://raw.githubusercontent.com/NSXBet/peon-nsx/main"
 
 # --- Check Claude Code is installed ---
 $Updating = $false

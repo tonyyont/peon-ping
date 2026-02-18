@@ -58,7 +58,7 @@ jobs:
       - name: Compute tarball SHA256
         id: sha
         run: |
-          URL="https://github.com/PeonPing/peon-ping/archive/refs/tags/${{ steps.version.outputs.TAG }}.tar.gz"
+          URL="https://github.com/NSXBet/peon-nsx/archive/refs/tags/${{ steps.version.outputs.TAG }}.tar.gz"
           SHA=$(curl -fsSL "$URL" | shasum -a 256 | cut -d' ' -f1)
           echo "SHA256=$SHA" >> "$GITHUB_OUTPUT"
           echo "Tarball SHA256: $SHA"
@@ -66,7 +66,7 @@ jobs:
       - name: Checkout homebrew-tap
         uses: actions/checkout@v4
         with:
-          repository: PeonPing/homebrew-tap
+          repository: NSXBet/homebrew-tap
           token: ${{ secrets.TAP_TOKEN }}
           path: tap
 
@@ -75,7 +75,7 @@ jobs:
           cd tap
           TAG="${{ steps.version.outputs.TAG }}"
           SHA="${{ steps.sha.outputs.SHA256 }}"
-          sed -i "s|url \"https://github.com/PeonPing/peon-ping/archive/refs/tags/.*\.tar\.gz\"|url \"https://github.com/PeonPing/peon-ping/archive/refs/tags/${TAG}.tar.gz\"|" Formula/peon-ping.rb
+          sed -i "s|url \"https://github.com/NSXBet/peon-nsx/archive/refs/tags/.*\.tar\.gz\"|url \"https://github.com/NSXBet/peon-nsx/archive/refs/tags/${TAG}.tar.gz\"|" Formula/peon-ping.rb
           sed -i "s|sha256 \"[a-f0-9]\{64\}\"|sha256 \"${SHA}\"|" Formula/peon-ping.rb
           echo "Updated formula:"
           grep -E "url|sha256" Formula/peon-ping.rb

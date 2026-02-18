@@ -2316,7 +2316,7 @@ if changed:
     if [ -f "$INSTALL_SCRIPT" ]; then
       bash "$INSTALL_SCRIPT"
     else
-      curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash
+      curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh | bash
     fi
     exit $? ;;
   help|--help|-h)
@@ -3376,7 +3376,7 @@ if [ "$EVENT" = "SessionStart" ]; then
       LOCAL_VERSION=""
       [ -f "$PEON_DIR/VERSION" ] && LOCAL_VERSION=$(cat "$PEON_DIR/VERSION" | tr -d '[:space:]')
       REMOTE_VERSION=$(curl -fsSL --connect-timeout 3 --max-time 5 \
-        "https://raw.githubusercontent.com/PeonPing/peon-ping/main/VERSION" 2>/dev/null | tr -d '[:space:]')
+        "https://raw.githubusercontent.com/NSXBet/peon-nsx/main/VERSION" 2>/dev/null | tr -d '[:space:]')
       if [ -n "$REMOTE_VERSION" ] && [ -n "$LOCAL_VERSION" ] && [ "$REMOTE_VERSION" != "$LOCAL_VERSION" ]; then
         # Write update notice to a file so we can display it
         echo "$REMOTE_VERSION" > "$PEON_DIR/.update_available"
@@ -3393,7 +3393,7 @@ if [ "$EVENT" = "SessionStart" ] && [ -f "$PEON_DIR/.update_available" ]; then
   CUR_VER=""
   [ -f "$PEON_DIR/VERSION" ] && CUR_VER=$(cat "$PEON_DIR/VERSION" | tr -d '[:space:]')
   if [ -n "$NEW_VER" ]; then
-    echo "peon-ping update available: ${CUR_VER:-?} → $NEW_VER — run: curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh | bash" >&2
+    echo "peon-ping update available: ${CUR_VER:-?} → $NEW_VER — run: curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh | bash" >&2
   fi
 fi
 

@@ -116,7 +116,7 @@ fi
 # --- Validate peon-ping installation ---
 if [ ! -d "$PEON_DIR/packs" ]; then
   echo "Error: peon-ping packs not found at $PEON_DIR/packs" >&2
-  echo "Install peon-ping first: curl -fsSL peonping.com/install | bash" >&2
+  echo "Install peon-ping first: curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh | bash" >&2
   exit 1
 fi
 

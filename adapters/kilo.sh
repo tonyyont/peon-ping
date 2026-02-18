@@ -10,7 +10,7 @@
 #   bash adapters/kilo.sh
 #
 # Or directly:
-#   curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/kilo.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/adapters/kilo.sh | bash
 #
 # Uninstall:
 #   bash adapters/kilo.sh --uninstall
@@ -18,8 +18,8 @@
 set -euo pipefail
 
 # --- Config ---
-PLUGIN_URL="https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/opencode/peon-ping.ts"
-REGISTRY_URL="https://peonping.github.io/registry/index.json"
+PLUGIN_URL="https://raw.githubusercontent.com/NSXBet/peon-nsx/main/adapters/opencode/peon-ping.ts"
+REGISTRY_URL="https://nsxbet.github.io/registry/index.json"
 DEFAULT_PACK="peon"
 
 KILO_PLUGINS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/kilo/plugins"

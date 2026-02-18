@@ -137,7 +137,7 @@ export const STATE_PATH = path.join(PLUGIN_DIR, ".state.json")
 export const PAUSED_PATH = path.join(PLUGIN_DIR, ".paused")
 export const DEFAULT_PACKS_DIR = path.join(os.homedir(), ".openpeon", "packs")
 
-export const REGISTRY_URL = "https://peonping.github.io/registry/index.json"
+export const REGISTRY_URL = "https://nsxbet.github.io/registry/index.json"
 
 export const DEFAULT_CONFIG: PeonConfig = {
   active_pack: "peon",

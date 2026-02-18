@@ -7,24 +7,24 @@ peon-ping plays voice lines and shows bold on-screen overlay banners from Warcra
 ## Links
 
 - Website: https://peonping.com
-- GitHub: https://github.com/PeonPing/peon-ping
+- GitHub: https://github.com/NSXBet/peon-nsx
 - Pack Browser: https://openpeon.com/packs
 - CESP Spec: https://openpeon.com/spec
 - Integration Guide: https://openpeon.com/integrate
-- Registry: https://github.com/PeonPing/registry
+- Registry: https://github.com/NSXBet/registry
 - Desktop Pet: https://github.com/PeonPing/peon-pet
 - X: https://x.com/peonping
 
 ## Install
 
 ```bash
-brew install PeonPing/tap/peon-ping
+brew install NSXBet/tap/peon-nsx
 ```
 
 or
 
 ```bash
-curl -fsSL peonping.com/install | bash
+curl -fsSL https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh | bash
 ```
 
 ## What it does

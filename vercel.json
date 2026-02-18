@@ -4,7 +4,7 @@
   "redirects": [
     {
       "source": "/install",
-      "destination": "https://raw.githubusercontent.com/PeonPing/peon-ping/main/install.sh",
+      "destination": "https://raw.githubusercontent.com/NSXBet/peon-nsx/main/install.sh",
       "statusCode": 301
     }
   ],

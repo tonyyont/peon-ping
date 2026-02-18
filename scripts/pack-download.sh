@@ -3,7 +3,7 @@
 # Used by install.sh and `peon packs install`
 set -euo pipefail
 
-REGISTRY_URL="https://peonping.github.io/registry/index.json"
+REGISTRY_URL="https://nsxbet.github.io/registry/index.json"
 
 # MSYS2/MinGW: Windows Python can't read /c/... paths — convert to C:/... via cygpath
 _IS_MSYS2=false

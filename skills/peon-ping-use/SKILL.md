@@ -4,7 +4,7 @@ description: Set which voice pack (character voice) plays for the current chat s
 user_invocable: true
 license: MIT
 metadata:
-  author: PeonPing
+  author: NSXBet
   version: "1.0"
 ---
 

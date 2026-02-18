@@ -40,14 +40,14 @@ See [RELEASING.md](RELEASING.md) for the full release process (version bumps, ta
 
 ## Related Repos
 
-peon-ping is part of the [PeonPing](https://github.com/PeonPing) org:
+peon-ping is part of the [NSXBet](https://github.com/NSXBet) org (forked from PeonPing):
 
 | Repo | Purpose |
 |---|---|
-| **[peon-ping](https://github.com/PeonPing/peon-ping)** (this repo) | CLI tool, installer, hook runtime, IDE adapters |
-| **[registry](https://github.com/PeonPing/registry)** | Pack registry (`index.json` served via GitHub Pages at `peonping.github.io/registry/index.json`) |
+| **[peon-nsx](https://github.com/NSXBet/peon-nsx)** (this repo) | CLI tool, installer, hook runtime, IDE adapters |
+| **[registry](https://github.com/NSXBet/registry)** | Pack registry (`index.json` served via GitHub Pages at `nsxbet.github.io/registry/index.json`) |
 | **[og-packs](https://github.com/PeonPing/og-packs)** | Official sound packs (40 packs, tagged releases) |
-| **[homebrew-tap](https://github.com/PeonPing/homebrew-tap)** | Homebrew formula (`brew install PeonPing/tap/peon-ping`) |
+| **[homebrew-tap](https://github.com/NSXBet/homebrew-tap)** | Homebrew formula (`brew install NSXBet/tap/peon-nsx`) |
 | **[openpeon](https://github.com/PeonPing/openpeon)** | CESP spec + openpeon.com website (Next.js in `site/`) |
 | **[peon-pet](https://github.com/PeonPing/peon-pet)** | macOS desktop pet — orc sprite that reacts to hook events (Electron + Three.js) |
 
@@ -105,7 +105,7 @@ All adapters translate IDE-specific events into the standardized CESP JSON forma
 
 ### Pack System
 
-Packs use `openpeon.json` ([CESP v1.0](https://github.com/PeonPing/openpeon)) manifests with dotted categories mapping to arrays of `{ "file": "sound.wav", "label": "text" }` entries. Packs are downloaded at install time from the [OpenPeon registry](https://github.com/PeonPing/registry) into `~/.claude/hooks/peon-ping/packs/`. The registry `index.json` contains `source_repo`, `source_ref`, and `source_path` fields pointing to each pack's source (official packs in og-packs, community packs in contributor repos).
+Packs use `openpeon.json` ([CESP v1.0](https://github.com/PeonPing/openpeon)) manifests with dotted categories mapping to arrays of `{ "file": "sound.wav", "label": "text" }` entries. Packs are downloaded at install time from the [OpenPeon registry](https://github.com/NSXBet/registry) into `~/.claude/hooks/peon-ping/packs/`. The registry `index.json` contains `source_repo`, `source_ref`, and `source_path` fields pointing to each pack's source (official packs in og-packs, community packs in contributor repos).
 
 ## Testing
 

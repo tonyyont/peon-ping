@@ -27,7 +27,7 @@ PEON_DIR="${CLAUDE_PEON_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping
 [ -d "$PEON_DIR" ] || PEON_DIR="$HOME/.openpeon"
 
 if [ ! -f "$PEON_DIR/peon.sh" ]; then
-  echo "peon-ping not installed. Run: brew install PeonPing/tap/peon-ping" >&2
+  echo "peon-ping not installed. Run: brew install NSXBet/tap/peon-nsx" >&2
   exit 1
 fi
 

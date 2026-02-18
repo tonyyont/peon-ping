@@ -49,19 +49,24 @@ STATE="$PEON_DIR/.state.json"
 resolve_pack_download() {
   local pack_dl
 
+  # Standard local install: $PEON_DIR is the install root
   pack_dl="$PEON_DIR/scripts/pack-download.sh"
   if [ -f "$pack_dl" ]; then
     printf '%s\n' "$pack_dl"
     return 0
   fi
 
-  pack_dl="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/pack-download.sh"
-  if [ -f "$pack_dl" ]; then
-    printf '%s\n' "$pack_dl"
-    return 0
+  # Homebrew/adapter install: peon.sh lives in the Cellar, scripts/ is a sibling.
+  # Skipped in test mode to allow "missing pack-download.sh" test cases to work.
+  if [ "${PEON_TEST:-0}" != "1" ]; then
+    pack_dl="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/pack-download.sh"
+    if [ -f "$pack_dl" ]; then
+      printf '%s\n' "$pack_dl"
+      return 0
+    fi
   fi
 
-  echo "Error: pack-download.sh not found. Run 'peon update' to fix." >&2
+  echo "Error: pack-download.sh not found. Run 'peon update' or reinstall peon-ping to fix." >&2
   return 1
 }
 

@@ -1,0 +1,64 @@
+{
+  "cesp_version": "1.0",
+  "name": "arnold",
+  "display_name": "Arnold Schwarzenegger",
+  "version": "1.0.0",
+  "description": "Iconic Arnold Schwarzenegger movie one-liners. Your terminal is now the Governator.",
+  "author": {
+    "name": "Michael",
+    "github": "mmichael0413"
+  },
+  "license": "CC-BY-NC-4.0",
+  "language": "en",
+  "categories": {
+    "session.start": {
+      "sounds": [
+        { "file": "sounds/ill-be-back.mp3", "label": "I'll be back." },
+        { "file": "sounds/get-to-the-choppa.mp3", "label": "Get to the choppa!" },
+        { "file": "sounds/come-with-me-if-you-want-to-live.mp3", "label": "Come with me if you want to live." }
+      ]
+    },
+    "task.acknowledge": {
+      "sounds": [
+        { "file": "sounds/no-problemo.mp3", "label": "No problemo." },
+        { "file": "sounds/consider-that-a-divorce.mp3", "label": "Consider that a divorce." },
+        { "file": "sounds/i-let-him-go.mp3", "label": "I let him go." },
+        { "file": "sounds/its-not-a-tumor.mp3", "label": "It's not a tumor!" }
+      ]
+    },
+    "task.complete": {
+      "sounds": [
+        { "file": "sounds/hasta-la-vista-baby.mp3", "label": "Hasta la vista, baby." },
+        { "file": "sounds/youve-been-terminated.mp3", "label": "You're terminated." },
+        { "file": "sounds/mission-accomplished.mp3", "label": "Mission accomplished." }
+      ]
+    },
+    "task.error": {
+      "sounds": [
+        { "file": "sounds/big-mistake.mp3", "label": "Big mistake." },
+        { "file": "sounds/what-the-hell-are-you.mp3", "label": "What the hell are you?" },
+        { "file": "sounds/you-are-one-ugly.mp3", "label": "You are one ugly motherf***er." }
+      ]
+    },
+    "input.required": {
+      "sounds": [
+        { "file": "sounds/do-it-do-it-now.mp3", "label": "Do it! Do it now!" },
+        { "file": "sounds/talk-to-the-hand.mp3", "label": "Talk to the hand." },
+        { "file": "sounds/put-that-cookie-down.mp3", "label": "Put that cookie down! NOW!" }
+      ]
+    },
+    "resource.limit": {
+      "sounds": [
+        { "file": "sounds/i-need-a-vacation.mp3", "label": "I need a vacation." },
+        { "file": "sounds/chill-out.mp3", "label": "Chill out." }
+      ]
+    },
+    "user.spam": {
+      "sounds": [
+        { "file": "sounds/stop-whining.mp3", "label": "Stop whining!" },
+        { "file": "sounds/shut-up.mp3", "label": "SHUT UP!" },
+        { "file": "sounds/enough-talk.mp3", "label": "Enough talk." }
+      ]
+    }
+  }
+}

@@ -4,6 +4,8 @@
 
 **Petite Speaki** is a Legendary Pet from [Trickcal Chibi Go](https://www.trickcal.com/) by EPIDGames / Bilibili. This voice pack brings Speaki's adorable energy to your coding sessions.
 
+**Who is Speaki?** Watch here: [ｽﾋﾟｷMADでよく使われるボイス集](https://www.youtube.com/watch?v=SYacnl6MpSA)
+
 ## Sound Categories
 
 | Category | Clips | Description |

@@ -392,6 +392,76 @@ json.dump(state, open('$TEST_DIR/.state.json', 'w'))
 }
 
 # ============================================================
+# suppress_subagent_complete
+# ============================================================
+
+@test "suppress_subagent_complete: subagent Stop is suppressed" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{ "active_pack": "peon", "volume": 0.5, "enabled": true, "categories": {}, "suppress_subagent_complete": true, "pack_rotation": ["peon","peon"] }
+JSON
+  # Parent session gets a SubagentStart (records pending_subagent_pack)
+  run_peon '{"hook_event_name":"SubagentStart","cwd":"/tmp/myproject","session_id":"parent1","permission_mode":"default"}'
+  # Subagent session starts within 30s — should inherit pack and be marked as subagent
+  # (SessionStart plays a greeting sound — capture count before Stop)
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"sub1","permission_mode":"default"}'
+  count_before=$(afplay_call_count)
+  # Subagent Stop should be suppressed — no additional afplay calls
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"sub1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  count_after=$(afplay_call_count)
+  [ "$count_after" = "$count_before" ]
+}
+
+@test "suppress_subagent_complete: parent Stop still plays sound" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{ "active_pack": "peon", "volume": 0.5, "enabled": true, "categories": {}, "suppress_subagent_complete": true, "pack_rotation": ["peon","peon"] }
+JSON
+  # Subagent flow: parent → SubagentStart → sub SessionStart (suppressed)
+  run_peon '{"hook_event_name":"SubagentStart","cwd":"/tmp/myproject","session_id":"parent2","permission_mode":"default"}'
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"sub2","permission_mode":"default"}'
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"sub2","permission_mode":"default"}'
+  ! afplay_was_called
+  # Clear debounce so parent Stop isn't debounced
+  /usr/bin/python3 -c "
+import json, time
+state = json.load(open('$TEST_DIR/.state.json'))
+state['last_stop_time'] = 0
+json.dump(state, open('$TEST_DIR/.state.json', 'w'))
+"
+  # Parent session Stop should still play
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"parent2","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+}
+
+@test "suppress_subagent_complete: disabled by default does not suppress" {
+  # Default config has suppress_subagent_complete=false
+  run_peon '{"hook_event_name":"SubagentStart","cwd":"/tmp/myproject","session_id":"parent3","permission_mode":"default"}'
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"sub3","permission_mode":"default"}'
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"sub3","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+}
+
+@test "suppress_subagent_complete: subagent_sessions cleaned up on SessionEnd" {
+  cat > "$TEST_DIR/config.json" <<'JSON'
+{ "active_pack": "peon", "volume": 0.5, "enabled": true, "categories": {}, "suppress_subagent_complete": true, "pack_rotation": ["peon","peon"] }
+JSON
+  run_peon '{"hook_event_name":"SubagentStart","cwd":"/tmp/myproject","session_id":"parent4","permission_mode":"default"}'
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"sub4","permission_mode":"default"}'
+  # SessionEnd removes sub4 from subagent_sessions
+  run_peon '{"hook_event_name":"SessionEnd","cwd":"/tmp/myproject","session_id":"sub4","permission_mode":"default"}'
+  # Verify sub4 is gone from state
+  result=$(/usr/bin/python3 -c "
+import json
+state = json.load(open('$TEST_DIR/.state.json'))
+subs = state.get('subagent_sessions', {})
+print('absent' if 'sub4' not in subs else 'present')
+")
+  [ "$result" = "absent" ]
+}
+
+# ============================================================
 # Update check
 # ============================================================
 

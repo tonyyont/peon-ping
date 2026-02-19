@@ -1914,6 +1914,7 @@ pack_rotation = cfg.get('pack_rotation', [])
 annoyed_threshold = int(cfg.get('annoyed_threshold', 3))
 annoyed_window = float(cfg.get('annoyed_window_seconds', 10))
 silent_window = float(cfg.get('silent_window_seconds', 0))
+suppress_subagent_complete = str(cfg.get('suppress_subagent_complete', False)).lower() == 'true'
 cats = cfg.get('categories', {})
 cat_enabled = {}
 default_off = {'task.acknowledge'}
@@ -2058,6 +2059,14 @@ elif pack_rotation and rotation_mode in ('random', 'round-robin'):
                 if parent_pack in pack_rotation:
                     active_pack = parent_pack
                     inherited = True
+                # Mark this session as a subagent so Stop can suppress its completion sound
+                subagent_sessions = state.get('subagent_sessions', {})
+                subagent_sessions[session_id] = time.time()
+                # Prune entries older than 5 minutes to avoid unbounded growth
+                now_ts = time.time()
+                subagent_sessions = {sid: ts for sid, ts in subagent_sessions.items() if now_ts - ts < 300}
+                state['subagent_sessions'] = subagent_sessions
+                state_dirty = True
             # Context reset: recent activity from another session, no Stop/SessionEnd
             elif (la_sid and la_sid != session_id and la_pack in pack_rotation
                     and la_evt not in ('Stop', 'SessionEnd')
@@ -2129,6 +2138,12 @@ elif event == 'UserPromptSubmit':
         state_dirty = True
 elif event == 'Stop':
     category = 'task.complete'
+    # Suppress completion sound/notification for known sub-agent sessions
+    if suppress_subagent_complete and session_id in state.get('subagent_sessions', {}):
+        os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
+        json.dump(state, open(state_file, 'w'))
+        print('PEON_EXIT=true')
+        sys.exit(0)
     silent = False
     if silent_window > 0:
         prompt_starts = state.get('prompt_start_times', {})
@@ -2191,7 +2206,7 @@ elif event == 'PreCompact':
     status = 'working'
 elif event == 'SessionEnd':
     # Clean up state for this session
-    for key in ('session_packs', 'prompt_timestamps', 'session_start_times', 'prompt_start_times'):
+    for key in ('session_packs', 'prompt_timestamps', 'session_start_times', 'prompt_start_times', 'subagent_sessions'):
         d = state.get(key, {})
         if session_id in d:
             del d[session_id]

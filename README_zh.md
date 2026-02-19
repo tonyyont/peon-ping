@@ -180,6 +180,7 @@ peon-ping 在 Claude Code 中安装两个斜杠命令：
 - **categories**：单独开关 CESP 声音分类（例如 `"session.start": false` 禁用问候声音）
 - **annoyed_threshold / annoyed_window_seconds**：在 N 秒内多少次提示触发 `user.spam` 彩蛋
 - **silent_window_seconds**：对于短于 N 秒的任务，抑制 `task.complete` 声音和通知。（例如 `10` 表示只播放超过 10 秒的任务声音）
+- **suppress_subagent_complete**（布尔值，默认：`false`）：当子 Agent 会话结束时，抑制 `task.complete` 声音和通知。当 Claude Code 的 Task 工具并行派发多个子 Agent 时，每个子 Agent 完成都会触发一次提示音——将此选项设为 `true`，则只播放父会话的完成提示音。
 - **pack_rotation**：语音包名称数组（例如 `["peon", "sc_kerrigan", "peasant"]`）。用于 `pack_rotation_mode` 为 `random` 或 `round-robin` 时；也列出 `agentskill` 模式的有效语音包。留空 `[]` 则仅使用 `active_pack`。
 - **pack_rotation_mode**：`"random"`（默认）、`"round-robin"` 或 `"agentskill"`。使用 `random`/`round-robin` 时，每个会话从 `pack_rotation` 中选择一个语音包。使用 `agentskill` 时，`/peon-ping-use <pack>` 命令为每个会话分配语音包。无效或缺失的语音包会回退到 `active_pack`，过期的分配会被移除。
 - **session_ttl_days**（数字，默认：7）：使超过 N 天的陈旧每会话语音包分配过期。防止使用 `agentskill` 模式时 `.state.json` 无限增长。

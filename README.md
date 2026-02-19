@@ -190,6 +190,7 @@ Config location depends on install mode:
 - **categories**: Toggle individual CESP sound categories on/off (e.g. `"session.start": false` to disable greeting sounds)
 - **annoyed_threshold / annoyed_window_seconds**: How many prompts in N seconds triggers the `user.spam` easter egg
 - **silent_window_seconds**: Suppress `task.complete` sounds and notifications for tasks shorter than N seconds. (e.g. `10` to only hear sounds for tasks that take longer than 10 seconds)
+- **suppress_subagent_complete** (boolean, default: `false`): Suppress `task.complete` sounds and notifications when a sub-agent session finishes. When Claude Code's Task tool dispatches parallel sub-agents, each one fires a completion sound — set this to `true` to hear only the parent session's completion sound.
 - **pack_rotation**: Array of pack names (e.g. `["peon", "sc_kerrigan", "peasant"]`). Used when `pack_rotation_mode` is `random` or `round-robin`; also lists valid packs for `agentskill` mode. Leave empty `[]` to use `active_pack` only.
 - **pack_rotation_mode**: `"random"` (default), `"round-robin"`, or `"agentskill"`. With `random`/`round-robin`, each session picks one pack from `pack_rotation`. With `agentskill`, the `/peon-ping-use <pack>` command assigns a pack per session. Invalid or missing packs fall back to `active_pack` and the stale assignment is removed.
 - **session_ttl_days** (number, default: 7): Expire stale per-session pack assignments older than N days. Keeps `.state.json` from growing unbounded when using `agentskill` mode.

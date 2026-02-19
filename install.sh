@@ -687,6 +687,18 @@ else:
 
 hooks = settings.setdefault('hooks', {})
 
+# Preserve existing command path if it resolves to the installed file
+installed = os.path.realpath(hook_cmd)
+for entries in hooks.values():
+    for entry in entries:
+        for hk in entry.get('hooks', []):
+            cmd = hk.get('command', '')
+            if 'peon-ping/' in cmd and cmd.endswith('/peon.sh'):
+                resolved = os.path.realpath(os.path.expanduser(cmd))
+                if resolved == installed:
+                    hook_cmd = cmd
+                break
+
 peon_hook_sync = {
     'type': 'command',
     'command': hook_cmd,
@@ -719,7 +731,7 @@ for event in events:
     event_hooks = [
         h for h in event_hooks
         if not any(
-            'notify.sh' in hk.get('command', '') or 'peon.sh' in hk.get('command', '')
+            'notify.sh' in hk.get('command', '') or 'peon-ping/' in hk.get('command', '')
             for hk in h.get('hooks', [])
         )
     ]
@@ -754,6 +766,18 @@ else:
 
 hooks = settings.setdefault('hooks', {})
 
+# Preserve existing command path if it resolves to the installed file
+installed = os.path.realpath(hook_cmd)
+for entries in hooks.values():
+    for entry in entries:
+        for hk in entry.get('hooks', []):
+            cmd = hk.get('command', '')
+            if 'peon-ping/' in cmd and '/hook-handle-use' in cmd:
+                resolved = os.path.realpath(os.path.expanduser(cmd))
+                if resolved == installed:
+                    hook_cmd = cmd
+                break
+
 # Create UserPromptSubmit hook entry for /peon-ping-use handler
 before_submit_hook = {
     'type': 'command',
@@ -768,11 +792,11 @@ before_submit_entry = {
 
 # Register under UserPromptSubmit (valid Claude Code event)
 event_hooks = hooks.get('UserPromptSubmit', [])
-# Remove any existing handle-use entries (keep peon.sh entries)
+# Remove any existing peon-ping entries
 event_hooks = [
     h for h in event_hooks
     if not any(
-        'hook-handle-use.sh' in hk.get('command', '')
+        'peon-ping/' in hk.get('command', '')
         for hk in h.get('hooks', [])
     )
 ]
@@ -822,6 +846,27 @@ if 'hooks' not in data:
 
 hooks = data['hooks']
 
+# Preserve existing command path if it resolves to the installed file
+installed = os.path.realpath(hook_cmd)
+def _find_existing(hooks_data, suffix):
+    if isinstance(hooks_data, list):
+        for h in hooks_data:
+            cmd = h.get('command', '')
+            if 'peon-ping/' in cmd and cmd.endswith(suffix):
+                yield cmd
+    elif isinstance(hooks_data, dict):
+        for entries in hooks_data.values():
+            for h in (entries if isinstance(entries, list) else []):
+                cmd = h.get('command', '')
+                if 'peon-ping/' in cmd and cmd.endswith(suffix):
+                    yield cmd
+
+for cmd in _find_existing(hooks, '/hook-handle-use'):
+    resolved = os.path.realpath(os.path.expanduser(cmd))
+    if resolved == installed:
+        hook_cmd = cmd
+        break
+
 # Create beforeSubmitPrompt hook entry (Cursor format)
 before_submit_hook = {
     'command': hook_cmd,
@@ -830,10 +875,10 @@ before_submit_hook = {
 
 # Handle both flat-array format [{event, command}] and dict format {event: [{command}]}
 if isinstance(hooks, list):
-    # Flat array format: remove existing handle-use entries for this event
+    # Flat array format: remove existing peon-ping entries for this event
     hooks = [
         h for h in hooks
-        if not (h.get('event') == 'beforeSubmitPrompt' and 'hook-handle-use.sh' in h.get('command', ''))
+        if not (h.get('event') == 'beforeSubmitPrompt' and 'peon-ping/' in h.get('command', ''))
     ]
     before_submit_hook['event'] = 'beforeSubmitPrompt'
     hooks.append(before_submit_hook)
@@ -842,7 +887,7 @@ else:
     event_hooks = hooks.get('beforeSubmitPrompt', [])
     event_hooks = [
         h for h in event_hooks
-        if 'hook-handle-use.sh' not in h.get('command', '')
+        if 'peon-ping' not in h.get('command', '')
     ]
     event_hooks.append(before_submit_hook)
     hooks['beforeSubmitPrompt'] = event_hooks
@@ -881,7 +926,7 @@ changed = False
 for event, entries in list(hooks.items()):
     filtered = [
         e for e in entries
-        if not any('peon-ping/peon.sh' in h.get('command', '') for h in e.get('hooks', []))
+        if not any('peon-ping/' in h.get('command', '') for h in e.get('hooks', []))
     ]
     if len(filtered) != len(entries):
         hooks[event] = filtered

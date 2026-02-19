@@ -44,7 +44,7 @@ if [ ! -d "$PEON_DIR/packs" ]; then
 fi
 # Local project config overrides global config
 _local_config="${PWD}/.claude/hooks/peon-ping/config.json"
-if [ "${PEON_TEST:-0}" != "1" ] && [ -f "$_local_config" ]; then
+if [ -f "$_local_config" ]; then
   CONFIG="$_local_config"
 else
   CONFIG="$PEON_DIR/config.json"

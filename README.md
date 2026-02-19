@@ -123,7 +123,7 @@ peon status               # Check if paused or active
 peon volume               # Show current volume
 peon volume 0.7           # Set volume (0.0–1.0)
 peon rotation             # Show current rotation mode
-peon rotation random      # Set rotation mode (random|round-robin|agentskill)
+peon rotation random      # Set rotation mode (random|round-robin|session_override)
 peon packs list           # List installed sound packs
 peon packs list --registry # Browse all available packs in the registry
 peon packs install <p1,p2> # Install packs from the registry
@@ -191,9 +191,17 @@ Config location depends on install mode:
 - **annoyed_threshold / annoyed_window_seconds**: How many prompts in N seconds triggers the `user.spam` easter egg
 - **silent_window_seconds**: Suppress `task.complete` sounds and notifications for tasks shorter than N seconds. (e.g. `10` to only hear sounds for tasks that take longer than 10 seconds)
 - **suppress_subagent_complete** (boolean, default: `false`): Suppress `task.complete` sounds and notifications when a sub-agent session finishes. When Claude Code's Task tool dispatches parallel sub-agents, each one fires a completion sound — set this to `true` to hear only the parent session's completion sound.
-- **pack_rotation**: Array of pack names (e.g. `["peon", "sc_kerrigan", "peasant"]`). Used when `pack_rotation_mode` is `random` or `round-robin`; also lists valid packs for `agentskill` mode. Leave empty `[]` to use `active_pack` only.
-- **pack_rotation_mode**: `"random"` (default), `"round-robin"`, or `"agentskill"`. With `random`/`round-robin`, each session picks one pack from `pack_rotation`. With `agentskill`, the `/peon-ping-use <pack>` command assigns a pack per session. Invalid or missing packs fall back to `active_pack` and the stale assignment is removed.
-- **session_ttl_days** (number, default: 7): Expire stale per-session pack assignments older than N days. Keeps `.state.json` from growing unbounded when using `agentskill` mode.
+- **default_pack**: The fallback pack used when no more specific rule applies (default: `"peon"`). Replaces the old `active_pack` key — existing configs are migrated automatically on `peon update`.
+- **path_rules**: Array of `{ "pattern": "...", "pack": "..." }` objects. Assigns a pack to sessions based on the working directory using glob matching (`*`, `?`). First matching rule wins. Beats `pack_rotation` and `default_pack`; overridden by `session_override` assignments.
+  ```json
+  "path_rules": [
+    { "pattern": "*/work/client-a/*", "pack": "glados" },
+    { "pattern": "*/personal/*",      "pack": "peon" }
+  ]
+  ```
+- **pack_rotation**: Array of pack names (e.g. `["peon", "sc_kerrigan", "peasant"]`). Used when `pack_rotation_mode` is `random` or `round-robin`. Leave empty `[]` to use `default_pack` (or `path_rules`) only.
+- **pack_rotation_mode**: `"random"` (default), `"round-robin"`, or `"session_override"`. With `random`/`round-robin`, each session picks one pack from `pack_rotation`. With `session_override`, the `/peon-ping-use <pack>` command assigns a pack per session. Invalid or missing packs fall back through the hierarchy. (`"agentskill"` is accepted as a legacy alias for `"session_override"`.)
+- **session_ttl_days** (number, default: 7): Expire stale per-session pack assignments older than N days. Keeps `.state.json` from growing unbounded when using `session_override` mode.
 
 ## Peon Trainer
 
@@ -379,7 +387,7 @@ The installer copies `peon-ping.ts` to `~/.config/opencode/plugins/` and creates
 - **Desktop notifications** — large overlay banners by default (JXA Cocoa, visible on all screens), or standard notifications via [`terminal-notifier`](https://github.com/julienXX/terminal-notifier) / `osascript`. Fires only when the terminal is not focused.
 - **Terminal focus detection** — checks if your terminal app (Terminal, iTerm2, Warp, Alacritty, kitty, WezTerm, ghostty, Hyper) is frontmost via AppleScript before sending notifications
 - **Tab titles** — updates the terminal tab to show task status (`● project: working...` / `✓ project: done` / `✗ project: error`)
-- **Pack switching** — reads `active_pack` from config, loads the pack's `openpeon.json` manifest at runtime
+- **Pack switching** — reads `default_pack` from config (with `active_pack` fallback for legacy configs), loads the pack's `openpeon.json` manifest at runtime. `path_rules` can override the pack per working directory.
 - **No-repeat logic** — avoids playing the same sound twice in a row per category
 - **Spam detection** — detects 3+ rapid prompts within 10 seconds, triggers `user.spam` voice lines
 

@@ -98,14 +98,14 @@ Full list: https://openpeon.com/packs
 
 Config file: `~/.claude/hooks/peon-ping/config.json`
 
-Key settings: volume, categories (per-event toggles), active_pack, pack_rotation, pack_rotation_mode, desktop_notifications, silent_window_seconds.
+Key settings: volume, categories (per-event toggles), default_pack (replaces active_pack), path_rules (glob-based per-repo pack assignment), pack_rotation, pack_rotation_mode, desktop_notifications, silent_window_seconds.
 
 ## CLI Commands
 
 ```bash
 peon pause / resume / status
 peon volume [0.0-1.0]
-peon rotation [random|round-robin|agentskill]
+peon rotation [random|round-robin|session_override]
 peon packs list / use / install / next / remove
 peon notifications on / off / test
 peon mobile ntfy <topic>
@@ -119,5 +119,5 @@ Four skills are installed alongside peon-ping for use inside Claude Code session
 
 - `/peon-ping-toggle` — Mute/unmute sounds for the current session
 - `/peon-ping-config` — Modify any setting (volume, packs, categories, etc.)
-- `/peon-ping-use <pack>` — Assign a specific pack to the current agent session (agentskill mode)
+- `/peon-ping-use <pack>` — Assign a specific pack to the current agent session (session_override mode)
 - `/peon-ping-log <n> <exercise>` — Log exercise reps to the Peon Trainer (e.g. `/peon-ping-log 25 pushups`)

@@ -672,7 +672,7 @@ src_path = '$CONFIG'
 dst_path = '$_target'
 
 # Keys shared between peon.sh and standalone adapters
-SHARED_KEYS = ('active_pack', 'volume', 'enabled', 'desktop_notifications', 'pack_rotation', 'mobile_notify')
+SHARED_KEYS = ('default_pack', 'active_pack', 'volume', 'enabled', 'desktop_notifications', 'pack_rotation', 'mobile_notify')
 
 try:
     src = json.load(open(src_path))
@@ -743,7 +743,7 @@ else:
     print('peon-ping: mobile notifications not configured')
 
 # --- Active pack ---
-active = c.get('active_pack', 'peon')
+active = c.get('default_pack', c.get('active_pack', 'peon'))
 packs_dir = os.path.join(peon_dir, 'packs')
 display_name = active
 pack_count = 0
@@ -767,8 +767,11 @@ if os.path.isdir(packs_dir):
                         except Exception:
                             pass
                         break
-print(f'peon-ping: active pack: {active} ({display_name})')
+print(f'peon-ping: default pack: {active} ({display_name})')
 print(f'peon-ping: {pack_count} pack(s) installed')
+rules = c.get('path_rules', [])
+if rules:
+    print(f'peon-ping: path rules: {len(rules)} configured')
 
 # --- IDE detection ---
 home = os.path.expanduser('~')
@@ -943,14 +946,14 @@ try:
     if rotation:
         print('peon-ping: rotation packs: ' + ', '.join(rotation))
     else:
-        print('peon-ping: rotation packs: (none — using active_pack)')
+        print('peon-ping: rotation packs: (none — using default_pack)')
 except Exception:
     print('peon-ping: rotation mode: random')
 "
       exit 0
     fi
     case "$ROT_ARG" in
-      random|round-robin|agentskill)
+      random|round-robin|session_override|agentskill)
         python3 -c "
 import json
 config_path = '$CONFIG'
@@ -958,18 +961,22 @@ try:
     cfg = json.load(open(config_path))
 except Exception:
     cfg = {}
-cfg['pack_rotation_mode'] = '$ROT_ARG'
+# Normalize agentskill alias to session_override
+mode = '$ROT_ARG'
+if mode == 'agentskill':
+    mode = 'session_override'
+cfg['pack_rotation_mode'] = mode
 json.dump(cfg, open(config_path, 'w'), indent=2)
-print('peon-ping: rotation mode set to $ROT_ARG')
+print('peon-ping: rotation mode set to ' + mode)
 "
         _rc=$?; [ $_rc -eq 0 ] && sync_adapter_configs; exit $_rc ;;
       *)
-        echo "Usage: peon rotation <random|round-robin|agentskill>" >&2
+        echo "Usage: peon rotation <random|round-robin|session_override>" >&2
         echo "" >&2
         echo "Modes:" >&2
-        echo "  random        Pick a random pack each session (default)" >&2
-        echo "  round-robin   Cycle through packs in order each session" >&2
-        echo "  agentskill    Use /peon-ping-use to assign pack per session" >&2
+        echo "  random           Pick a random pack each session (default)" >&2
+        echo "  round-robin      Cycle through packs in order each session" >&2
+        echo "  session_override Use /peon-ping-use to assign pack per session" >&2
         exit 1 ;;
     esac ;;
   packs)
@@ -984,7 +991,8 @@ print('peon-ping: rotation mode set to $ROT_ARG')
 import json, os, glob
 config_path = '$CONFIG'
 try:
-    active = json.load(open(config_path)).get('active_pack', 'peon')
+    _cfg_list = json.load(open(config_path))
+    active = _cfg_list.get('default_pack', _cfg_list.get('active_pack', 'peon'))
 except Exception:
     active = 'peon'
 packs_dir = '$PEON_DIR/packs'
@@ -1048,7 +1056,8 @@ try:
     cfg = json.load(open(config_path))
 except Exception:
     cfg = {}
-cfg['active_pack'] = pack_arg
+cfg['default_pack'] = pack_arg
+cfg.pop('active_pack', None)
 json.dump(cfg, open(config_path, 'w'), indent=2)
 display = pack_arg
 for mname in ('openpeon.json', 'manifest.json'):
@@ -1067,7 +1076,7 @@ try:
     cfg = json.load(open(config_path))
 except Exception:
     cfg = {}
-active = cfg.get('active_pack', 'peon')
+active = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
 packs_dir = '$PEON_DIR/packs'
 names = sorted([
     d for d in os.listdir(packs_dir)
@@ -1084,7 +1093,8 @@ try:
     next_pack = names[(idx + 1) % len(names)]
 except ValueError:
     next_pack = names[0]
-cfg['active_pack'] = next_pack
+cfg['default_pack'] = next_pack
+cfg.pop('active_pack', None)
 json.dump(cfg, open(config_path, 'w'), indent=2)
 # Read display name
 for mname in ('openpeon.json', 'manifest.json'):
@@ -1109,7 +1119,7 @@ try:
     cfg = json.load(open(config_path))
 except Exception:
     cfg = {}
-active = cfg.get('active_pack', 'peon')
+active = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
 
 installed = sorted([
     d for d in os.listdir(packs_dir)
@@ -1121,7 +1131,7 @@ installed = sorted([
 
 removable = [p for p in installed if p != active]
 if not removable:
-    print(f'No packs to remove — only the active pack (\"{active}\") is installed.', file=sys.stderr)
+    print(f'No packs to remove — only the default pack (\"{active}\") is installed.', file=sys.stderr)
     sys.exit(1)
 
 print(','.join(removable))
@@ -1139,7 +1149,7 @@ try:
     cfg = json.load(open(config_path))
 except Exception:
     cfg = {}
-active = cfg.get('active_pack', 'peon')
+active = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
 
 installed = sorted([
     d for d in os.listdir(packs_dir)
@@ -1156,7 +1166,7 @@ for p in requested:
     if p not in installed:
         errors.append(f'Pack \"{p}\" not found.')
     elif p == active:
-        errors.append(f'Cannot remove \"{p}\" — it is the active pack. Switch first with: peon packs use <other>')
+        errors.append(f'Cannot remove \"{p}\" — it is the default pack. Switch first with: peon packs use <other>')
     else:
         valid.append(p)
 
@@ -1448,7 +1458,7 @@ try:
     cfg = json.load(open(config_path))
 except Exception:
     cfg = {}
-active_pack = cfg.get('active_pack', 'peon')
+active_pack = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
 
 pack_dir = os.path.join(peon_dir, 'packs', active_pack)
 if not os.path.isdir(pack_dir):
@@ -1489,7 +1499,7 @@ try:
 except Exception:
     cfg = {}
 volume = cfg.get('volume', 0.5)
-active_pack = cfg.get('active_pack', 'peon')
+active_pack = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
 
 # Load manifest
 pack_dir = os.path.join(peon_dir, 'packs', active_pack)
@@ -1560,6 +1570,28 @@ for i, s in enumerate(sounds):
     exit 0 ;;
   update)
     echo "Updating peon-ping..."
+    # Migrate config keys (active_pack → default_pack, agentskill → session_override)
+    python3 -c "
+import json, os
+config_path = '$GLOBAL_CONFIG'
+try:
+    cfg = json.load(open(config_path))
+except Exception:
+    cfg = {}
+changed = False
+if 'active_pack' in cfg and 'default_pack' not in cfg:
+    cfg['default_pack'] = cfg.pop('active_pack')
+    changed = True
+elif 'active_pack' in cfg:
+    cfg.pop('active_pack')
+    changed = True
+if cfg.get('pack_rotation_mode') == 'agentskill':
+    cfg['pack_rotation_mode'] = 'session_override'
+    changed = True
+if changed:
+    json.dump(cfg, open(config_path, 'w'), indent=2)
+    print('peon-ping: config migrated (active_pack \u2192 default_pack, agentskill \u2192 session_override)')
+" 2>/dev/null || true
     INSTALL_SCRIPT="$PEON_DIR/install.sh"
     if [ -f "$INSTALL_SCRIPT" ]; then
       bash "$INSTALL_SCRIPT"
@@ -1577,7 +1609,7 @@ Commands:
   toggle               Toggle mute on/off
   status               Check if paused or active
   volume [0.0-1.0]     Get or set volume level
-  rotation [mode]      Get or set pack rotation mode (random|round-robin|agentskill)
+  rotation [mode]      Get or set pack rotation mode (random|round-robin|session_override)
   notifications on        Enable desktop notifications
   notifications off       Disable desktop notifications
   notifications overlay   Use large overlay banners (default)
@@ -1909,7 +1941,7 @@ use_sound_effects_device = cfg.get('use_sound_effects_device', True)
 linux_audio_player = cfg.get('linux_audio_player', '')
 tab_color_cfg = cfg.get('tab_color', {})
 tab_color_enabled = str(tab_color_cfg.get('enabled', True)).lower() != 'false'
-active_pack = cfg.get('active_pack', 'peon')
+active_pack = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
 pack_rotation = cfg.get('pack_rotation', [])
 annoyed_threshold = int(cfg.get('annoyed_threshold', 3))
 annoyed_window = float(cfg.get('annoyed_window_seconds', 10))
@@ -1996,8 +2028,22 @@ if session_packs != state.get('session_packs', {}):
 # --- Pack rotation: pin a pack per session ---
 rotation_mode = cfg.get('pack_rotation_mode', 'random')
 
-if rotation_mode == 'agentskill':
-    # Explicit per-session assignments (from skill)
+# --- Path rules: first glob match wins (layer 3 in override hierarchy) ---
+# Beats rotation and default_pack; loses to session_override and local config.
+import fnmatch
+_path_rule_pack = None
+for _rule in cfg.get('path_rules', []):
+    _pat = _rule.get('pattern', '')
+    _candidate = _rule.get('pack', '')
+    if cwd and _pat and _candidate and fnmatch.fnmatch(cwd, _pat):
+        if os.path.isdir(os.path.join(peon_dir, 'packs', _candidate)):
+            _path_rule_pack = _candidate
+            break
+
+_default_pack = cfg.get('default_pack', cfg.get('active_pack', 'peon'))
+
+if rotation_mode in ('session_override', 'agentskill'):
+    # Explicit per-session assignments (from /peon-ping-use skill)
     session_packs = state.get('session_packs', {})
     if session_id in session_packs and session_packs[session_id]:
         pack_data = session_packs[session_id]
@@ -2006,7 +2052,7 @@ if rotation_mode == 'agentskill':
             candidate = pack_data.get('pack', '')
         else:
             candidate = pack_data
-        # Validate pack exists, fallback to active_pack if missing
+        # Validate pack exists, fallback to path_rule or default_pack if missing
         candidate_dir = os.path.join(peon_dir, 'packs', candidate)
         if candidate and os.path.isdir(candidate_dir):
             active_pack = candidate
@@ -2015,8 +2061,8 @@ if rotation_mode == 'agentskill':
             state['session_packs'] = session_packs
             state_dirty = True
         else:
-            # Pack was deleted or invalid, use default
-            active_pack = cfg.get('active_pack', 'peon')
+            # Pack was deleted or invalid, fall through hierarchy
+            active_pack = _path_rule_pack or _default_pack
             # Clean up invalid entry
             del session_packs[session_id]
             state['session_packs'] = session_packs
@@ -2030,62 +2076,66 @@ if rotation_mode == 'agentskill':
             if candidate and os.path.isdir(candidate_dir):
                 active_pack = candidate
             else:
-                active_pack = cfg.get('active_pack', 'peon')
+                active_pack = _path_rule_pack or _default_pack
         else:
-            active_pack = cfg.get('active_pack', 'peon')
+            active_pack = _path_rule_pack or _default_pack
 elif pack_rotation and rotation_mode in ('random', 'round-robin'):
-    # Automatic rotation — detect context resets (new session_id within seconds
-    # of the last event, no Stop in between) and reuse the previous pack.
-    session_packs = state.get('session_packs', {})
-    _sp_entry = session_packs.get(session_id)
-    _sp_pack = _sp_entry.get('pack', '') if isinstance(_sp_entry, dict) else (_sp_entry or '')
-    if session_id in session_packs and _sp_pack in pack_rotation:
-        active_pack = _sp_pack
+    if _path_rule_pack:
+        # Path rule beats rotation
+        active_pack = _path_rule_pack
     else:
-        inherited = False
-        if event == 'SessionStart':
-            last_active = state.get('last_active', {})
-            la_sid = last_active.get('session_id', '')
-            la_ts = last_active.get('timestamp', 0)
-            la_evt = last_active.get('event', '')
-            la_pack = last_active.get('pack', '')
-            # Resume: keep whatever pack was last used for this session
-            if session_source == 'resume' and la_pack in pack_rotation:
-                active_pack = la_pack
-                inherited = True
-            # Subagent inheritance: parent just spawned a subagent, use parent's pack
-            elif state.get('pending_subagent_pack') and (time.time() - state['pending_subagent_pack'].get('ts', 0) < 30):
-                parent_pack = state['pending_subagent_pack'].get('pack', '')
-                if parent_pack in pack_rotation:
-                    active_pack = parent_pack
+        # Automatic rotation — detect context resets (new session_id within seconds
+        # of the last event, no Stop in between) and reuse the previous pack.
+        session_packs = state.get('session_packs', {})
+        _sp_entry = session_packs.get(session_id)
+        _sp_pack = _sp_entry.get('pack', '') if isinstance(_sp_entry, dict) else (_sp_entry or '')
+        if session_id in session_packs and _sp_pack in pack_rotation:
+            active_pack = _sp_pack
+        else:
+            inherited = False
+            if event == 'SessionStart':
+                last_active = state.get('last_active', {})
+                la_sid = last_active.get('session_id', '')
+                la_ts = last_active.get('timestamp', 0)
+                la_evt = last_active.get('event', '')
+                la_pack = last_active.get('pack', '')
+                # Resume: keep whatever pack was last used for this session
+                if session_source == 'resume' and la_pack in pack_rotation:
+                    active_pack = la_pack
                     inherited = True
-                # Mark this session as a subagent so Stop can suppress its completion sound
-                subagent_sessions = state.get('subagent_sessions', {})
-                subagent_sessions[session_id] = time.time()
-                # Prune entries older than 5 minutes to avoid unbounded growth
-                now_ts = time.time()
-                subagent_sessions = {sid: ts for sid, ts in subagent_sessions.items() if now_ts - ts < 300}
-                state['subagent_sessions'] = subagent_sessions
-                state_dirty = True
-            # Context reset: recent activity from another session, no Stop/SessionEnd
-            elif (la_sid and la_sid != session_id and la_pack in pack_rotation
-                    and la_evt not in ('Stop', 'SessionEnd')
-                    and time.time() - la_ts < 15):
-                active_pack = la_pack
-                inherited = True
-        if not inherited:
-            if rotation_mode == 'round-robin':
-                rotation_index = state.get('rotation_index', 0) % len(pack_rotation)
-                active_pack = pack_rotation[rotation_index]
-                state['rotation_index'] = rotation_index + 1
-            else:
-                active_pack = random.choice(pack_rotation)
-        session_packs[session_id] = active_pack
-        state['session_packs'] = session_packs
-        state_dirty = True
+                # Subagent inheritance: parent just spawned a subagent, use parent's pack
+                elif state.get('pending_subagent_pack') and (time.time() - state['pending_subagent_pack'].get('ts', 0) < 30):
+                    parent_pack = state['pending_subagent_pack'].get('pack', '')
+                    if parent_pack in pack_rotation:
+                        active_pack = parent_pack
+                        inherited = True
+                    # Mark this session as a subagent so Stop can suppress its completion sound
+                    subagent_sessions = state.get('subagent_sessions', {})
+                    subagent_sessions[session_id] = time.time()
+                    # Prune entries older than 5 minutes to avoid unbounded growth
+                    now_ts = time.time()
+                    subagent_sessions = dict((sid, ts) for sid, ts in subagent_sessions.items() if now_ts - ts < 300)
+                    state['subagent_sessions'] = subagent_sessions
+                    state_dirty = True
+                # Context reset: recent activity from another session, no Stop/SessionEnd
+                elif (la_sid and la_sid != session_id and la_pack in pack_rotation
+                        and la_evt not in ('Stop', 'SessionEnd')
+                        and time.time() - la_ts < 15):
+                    active_pack = la_pack
+                    inherited = True
+            if not inherited:
+                if rotation_mode == 'round-robin':
+                    rotation_index = state.get('rotation_index', 0) % len(pack_rotation)
+                    active_pack = pack_rotation[rotation_index]
+                    state['rotation_index'] = rotation_index + 1
+                else:
+                    active_pack = random.choice(pack_rotation)
+            session_packs[session_id] = active_pack
+            state['session_packs'] = session_packs
+            state_dirty = True
 else:
-    # Default: everyone uses active_pack
-    active_pack = cfg.get('active_pack', 'peon')
+    # Default: path_rule if matched, otherwise default_pack
+    active_pack = _path_rule_pack or _default_pack
 
 # --- Track last active session for context-reset detection ---
 state['last_active'] = dict(session_id=session_id, pack=active_pack,

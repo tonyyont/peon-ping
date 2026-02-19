@@ -91,7 +91,7 @@ JSON
   # Create default config (CESP category names)
   cat > "$TEST_DIR/config.json" <<'JSON'
 {
-  "active_pack": "peon",
+  "default_pack": "peon",
   "volume": 0.5,
   "enabled": true,
   "categories": {

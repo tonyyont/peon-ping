@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.8.0 (2026-02-20)
+
+### Added
+- Click-to-focus for IDE embedded terminals (Cursor, VS Code, Windsurf, Zed) — when `TERM_PROGRAM` doesn't map to a standalone terminal, falls back to deriving the IDE's bundle ID from its PID via `lsappinfo` (macOS built-in)
+- PID-based `NSRunningApplication` activation in `mac-overlay.js` as belt-and-suspenders fallback when bundle ID lookup fails
+
 ## v2.7.0 (2026-02-19)
 
 ### Added

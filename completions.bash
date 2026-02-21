@@ -15,7 +15,7 @@ _peon_completions() {
     case "$subcmd" in
       packs)
         if [ "$cword" -eq 2 ]; then
-          COMPREPLY=( $(compgen -W "list use next install remove rotation" -- "$cur") )
+          COMPREPLY=( $(compgen -W "list use next install install-local remove rotation" -- "$cur") )
         elif [ "$cword" -eq 3 ] && [ "$prev" = "rotation" ]; then
           COMPREPLY=( $(compgen -W "list add remove" -- "$cur") )
         elif [ "$cword" -eq 4 ] && [ "${words[2]}" = "rotation" ] && { [ "$prev" = "add" ] || [ "$prev" = "remove" ]; }; then
@@ -28,6 +28,8 @@ _peon_completions() {
           fi
         elif [ "$cword" -eq 3 ] && [ "$prev" = "install" ]; then
           COMPREPLY=( $(compgen -W "--all" -- "$cur") )
+        elif [ "$cword" -eq 3 ] && [ "$prev" = "install-local" ]; then
+          COMPREPLY=( $(compgen -d -- "$cur") )
         elif [ "$cword" -eq 3 ] && [ "$prev" = "list" ]; then
           COMPREPLY=( $(compgen -W "--registry" -- "$cur") )
         elif [ "$cword" -eq 3 ] && { [ "$prev" = "use" ] || [ "$prev" = "remove" ]; }; then

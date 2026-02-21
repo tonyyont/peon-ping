@@ -124,6 +124,7 @@ peon packs list           # 列出已安装的语音包
 peon packs list --registry # 浏览注册表中所有可用语音包
 peon packs install <p1,p2> # 从注册表安装语音包
 peon packs install --all  # 从注册表安装所有语音包
+peon packs install-local <path> # 从本地目录安装语音包
 peon packs use <name>     # 切换到指定语音包
 peon packs next           # 切换到下一个语音包
 peon packs remove <p1,p2> # 移除指定语音包

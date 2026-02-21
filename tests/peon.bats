@@ -2974,3 +2974,150 @@ assert cfg.get('pack_rotation_mode') == 'session_override', "mode should be unch
 PYTHON
 }
 
+# ============================================================
+# packs install-local
+# ============================================================
+
+@test "packs install-local copies a valid local pack" {
+  # Create a local pack directory with a valid manifest + sound
+  LOCAL_PACK="$(mktemp -d)"
+  cat > "$LOCAL_PACK/openpeon.json" <<'JSON'
+{
+  "cesp_version": "1.0",
+  "name": "local_test",
+  "display_name": "Local Test Pack",
+  "categories": {
+    "session.start": {
+      "sounds": [
+        { "file": "sounds/Hello.wav", "label": "Hello" }
+      ]
+    }
+  }
+}
+JSON
+  mkdir -p "$LOCAL_PACK/sounds"
+  touch "$LOCAL_PACK/sounds/Hello.wav"
+
+  run bash "$PEON_SH" packs install-local "$LOCAL_PACK"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"local_test"* ]]
+  # Pack directory should exist
+  [ -d "$TEST_DIR/packs/local_test" ]
+  # Manifest should be copied
+  [ -f "$TEST_DIR/packs/local_test/openpeon.json" ]
+  # Sound file should be copied
+  [ -f "$TEST_DIR/packs/local_test/sounds/Hello.wav" ]
+  rm -rf "$LOCAL_PACK"
+}
+
+@test "packs install-local fails with no arguments" {
+  run bash "$PEON_SH" packs install-local
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Usage"* ]]
+}
+
+@test "packs install-local fails for nonexistent directory" {
+  run bash "$PEON_SH" packs install-local /tmp/no-such-dir-peon-test-$$
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"not found"* ]]
+}
+
+@test "packs install-local fails when no manifest present" {
+  NO_MANIFEST="$(mktemp -d)"
+  touch "$NO_MANIFEST/some_file.wav"
+
+  run bash "$PEON_SH" packs install-local "$NO_MANIFEST"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"openpeon.json"* ]]
+  rm -rf "$NO_MANIFEST"
+}
+
+@test "packs install-local refuses overwrite without --force" {
+  # Pre-create the target directory
+  mkdir -p "$TEST_DIR/packs/overwrite_test"
+  cat > "$TEST_DIR/packs/overwrite_test/openpeon.json" <<'JSON'
+{"name":"overwrite_test"}
+JSON
+
+  LOCAL_PACK="$(mktemp -d)"
+  cat > "$LOCAL_PACK/openpeon.json" <<'JSON'
+{"cesp_version":"1.0","name":"overwrite_test","display_name":"Overwrite Test","categories":{}}
+JSON
+
+  run bash "$PEON_SH" packs install-local "$LOCAL_PACK"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"already exists"* ]] || [[ "$output" == *"--force"* ]]
+  rm -rf "$LOCAL_PACK"
+}
+
+@test "packs install-local overwrites with --force" {
+  mkdir -p "$TEST_DIR/packs/force_test"
+  echo '{"name":"force_test"}' > "$TEST_DIR/packs/force_test/openpeon.json"
+
+  LOCAL_PACK="$(mktemp -d)"
+  cat > "$LOCAL_PACK/openpeon.json" <<'JSON'
+{"cesp_version":"1.0","name":"force_test","display_name":"Force Test","categories":{"session.start":{"sounds":[{"file":"sounds/Hi.wav","label":"Hi"}]}}}
+JSON
+  mkdir -p "$LOCAL_PACK/sounds"
+  touch "$LOCAL_PACK/sounds/Hi.wav"
+
+  run bash "$PEON_SH" packs install-local "$LOCAL_PACK" --force
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_DIR/packs/force_test/sounds/Hi.wav" ]
+  rm -rf "$LOCAL_PACK"
+}
+
+@test "packs install-local pack appears in packs list" {
+  LOCAL_PACK="$(mktemp -d)"
+  cat > "$LOCAL_PACK/openpeon.json" <<'JSON'
+{"cesp_version":"1.0","name":"listed_pack","display_name":"Listed Pack","categories":{"session.start":{"sounds":[{"file":"sounds/A.wav","label":"A"}]}}}
+JSON
+  mkdir -p "$LOCAL_PACK/sounds"
+  touch "$LOCAL_PACK/sounds/A.wav"
+
+  bash "$PEON_SH" packs install-local "$LOCAL_PACK"
+  run bash "$PEON_SH" packs list
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"listed_pack"* ]]
+  [[ "$output" == *"Listed Pack"* ]]
+  rm -rf "$LOCAL_PACK"
+}
+
+@test "packs install-local warns about missing sound files" {
+  LOCAL_PACK="$(mktemp -d)"
+  cat > "$LOCAL_PACK/openpeon.json" <<'JSON'
+{"cesp_version":"1.0","name":"warn_pack","display_name":"Warn Pack","categories":{"session.start":{"sounds":[{"file":"sounds/Missing.wav","label":"Missing"}]}}}
+JSON
+
+  run bash "$PEON_SH" packs install-local "$LOCAL_PACK"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Warning"* ]] || [[ "$output" == *"missing"* ]] || [[ "${lines[*]}" == *"Missing.wav"* ]]
+  [ -d "$TEST_DIR/packs/warn_pack" ]
+  rm -rf "$LOCAL_PACK"
+}
+
+@test "packs install-local falls back to manifest.json" {
+  LOCAL_PACK="$(mktemp -d)"
+  cat > "$LOCAL_PACK/manifest.json" <<'JSON'
+{"cesp_version":"1.0","name":"fallback_pack","display_name":"Fallback Pack","categories":{}}
+JSON
+
+  run bash "$PEON_SH" packs install-local "$LOCAL_PACK"
+  [ "$status" -eq 0 ]
+  [ -d "$TEST_DIR/packs/fallback_pack" ]
+  rm -rf "$LOCAL_PACK"
+}
+
+@test "packs install-local falls back to dirname when name field missing" {
+  LOCAL_PACK="$(mktemp -d)/my_custom_pack"
+  mkdir -p "$LOCAL_PACK"
+  cat > "$LOCAL_PACK/openpeon.json" <<'JSON'
+{"cesp_version":"1.0","display_name":"No Name Field","categories":{}}
+JSON
+
+  run bash "$PEON_SH" packs install-local "$LOCAL_PACK"
+  [ "$status" -eq 0 ]
+  [ -d "$TEST_DIR/packs/my_custom_pack" ]
+  rm -rf "$(dirname "$LOCAL_PACK")"
+}
+

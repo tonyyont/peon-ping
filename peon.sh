@@ -1116,6 +1116,60 @@ if rotation:
           exit 1
         fi
         exit 0 ;;
+      install-local)
+        LOCAL_SRC="${3:-}"
+        LOCAL_FORCE=0
+        # Parse --force flag from any position
+        for _arg in "${@:3}"; do
+          case "$_arg" in
+            --force) LOCAL_FORCE=1 ;;
+            *) [ -z "$LOCAL_SRC" ] || [ "$LOCAL_SRC" = "--force" ] && LOCAL_SRC="$_arg" ;;
+          esac
+        done
+        [ "$LOCAL_SRC" = "--force" ] && LOCAL_SRC="${4:-}"
+        if [ -z "$LOCAL_SRC" ]; then
+          echo "Usage: peon packs install-local <path> [--force]" >&2
+          echo "  Install a pack from a local directory (must contain openpeon.json)" >&2
+          exit 1
+        fi
+        # Resolve to absolute path
+        LOCAL_SRC="$(cd "$LOCAL_SRC" 2>/dev/null && pwd)" || { echo "Error: directory not found: ${3}" >&2; exit 1; }
+        # Validate and copy via Python
+        LOCAL_SRC="$LOCAL_SRC" LOCAL_FORCE="$LOCAL_FORCE" python3 -c "
+import json, os, shutil, sys
+
+src = os.environ['LOCAL_SRC']
+force = os.environ.get('LOCAL_FORCE', '0') == '1'
+packs_dir = os.path.join('$PEON_DIR', 'packs')
+
+manifest_name = 'openpeon.json' if os.path.exists(os.path.join(src, 'openpeon.json')) else 'manifest.json'
+if os.path.exists(os.path.join(src, manifest_name)):
+    manifest = json.load(open(os.path.join(src, manifest_name)))
+else:
+    print('Error: no openpeon.json or manifest.json found in ' + src, file=sys.stderr)
+    sys.exit(1)
+pack_name = manifest.get('name', os.path.basename(src))
+dest = os.path.join(packs_dir, pack_name)
+if os.path.exists(dest) and not force:
+    print(f'Pack \"{pack_name}\" already exists. Use --force to overwrite.', file=sys.stderr)
+    sys.exit(1)
+if force and os.path.exists(dest):
+    shutil.rmtree(dest)
+warnings = []
+for category in manifest.get('categories', {}).values():
+    for sound in category.get('sounds', []):
+        sf = sound.get('file')
+        if sf and not os.path.exists(os.path.join(src, sf)):
+            warnings.append(sf)
+if warnings:
+    print(f'Warning: {len(warnings)} missing sound file(s):', file=sys.stderr)
+    for w in warnings:
+        print(f'  {w}', file=sys.stderr)
+shutil.copytree(src, dest)
+print(f'Installed {pack_name}')
+print(f'Use peon packs use {pack_name} to activate it')
+" || exit 1
+        sync_adapter_configs; exit 0 ;;
       rotation)
         ROT_SUB="${3:-}"
         ROT_ARG="${4:-}"
@@ -1232,7 +1286,7 @@ else:
             echo "Usage: peon packs rotation <list|add|remove>" >&2; exit 1 ;;
         esac ;;
       *)
-        echo "Usage: peon packs <list|use|next|install|remove|rotation>" >&2; exit 1 ;;
+        echo "Usage: peon packs <list|use|next|install|install-local|remove|rotation>" >&2; exit 1 ;;
     esac ;;
   mobile)
     case "${2:-}" in
@@ -1615,6 +1669,7 @@ Pack management:
   packs list --registry   List all available packs from registry
   packs install <p1,p2>   Download and install new packs
   packs install --all     Download all packs from registry
+  packs install-local <path> Install a pack from a local directory
   packs use <name>        Switch to a specific pack
   packs use --install <n> Switch to pack, installing from registry if needed
   packs next              Cycle to the next pack

@@ -128,6 +128,7 @@ peon packs list           # List installed sound packs
 peon packs list --registry # Browse all available packs in the registry
 peon packs install <p1,p2> # Install packs from the registry
 peon packs install --all  # Install all packs from the registry
+peon packs install-local <path> # Install a pack from a local directory
 peon packs use <name>     # Switch to a specific pack
 peon packs use --install <name>  # Switch to pack, installing from registry if needed
 peon packs next           # Cycle to the next pack

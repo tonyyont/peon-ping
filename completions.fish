@@ -39,6 +39,7 @@ complete -c peon -n "__peon_using_subcommand packs" -a list -d "List installed s
 complete -c peon -n "__peon_using_subcommand packs" -a use -d "Switch to a specific pack"
 complete -c peon -n "__peon_using_subcommand packs" -a next -d "Cycle to the next pack"
 complete -c peon -n "__peon_using_subcommand packs" -a install -d "Download and install new packs"
+complete -c peon -n "__peon_using_subcommand packs" -a install-local -d "Install a pack from a local directory" -F
 complete -c peon -n "__peon_using_subcommand packs" -a remove -d "Remove specific packs"
 complete -c peon -n "__peon_using_subcommand packs" -a rotation -d "Manage pack rotation list"
 

@@ -22,6 +22,17 @@ function Test-SafeSourceRef($n)   { $n -match '^[A-Za-z0-9._/-]+$' -and $n -notm
 function Test-SafeSourcePath($n)  { $n -match '^[A-Za-z0-9._/-]+$' -and $n -notmatch '\.\.' -and $n[0] -ne '/' }
 function Test-SafeFilename($n)    { $n -match '^[A-Za-z0-9._-]+$' }
 
+# Returns raw config JSON with locale-damaged decimals fixed (e.g. "volume": 0,5 -> 0.5).
+# Also repairs missing volume value (e.g. "volume":\n "pack_rotation_mode" from a failed write).
+# Use before ConvertFrom-Json so config parses on systems where decimal separator is comma.
+function Get-PeonConfigRaw {
+    param([string]$Path)
+    $raw = Get-Content $Path -Raw
+    $raw = $raw -replace '"volume"\s*:\s*(\d),(\d+)', '"volume": $1.$2'
+    $raw = $raw -replace '"volume"\s*:\s*\r?\n(\s*)"', '"volume": 0.5,$1"'
+    return $raw
+}
+
 # --- Fallback pack list (used when registry is unreachable) ---
 $FallbackPacks = @("acolyte_de", "acolyte_ru", "aoe2", "aom_greek", "brewmaster_ru", "dota2_axe", "duke_nukem", "glados", "hd2_helldiver", "molag_bal", "murloc", "ocarina_of_time", "peon", "peon_cz", "peon_de", "peon_es", "peon_fr", "peon_pl", "peon_ru", "peasant", "peasant_cz", "peasant_es", "peasant_fr", "peasant_ru", "ra2_kirov", "ra2_soviet_engineer", "ra_soviet", "rick", "sc_battlecruiser", "sc_firebat", "sc_kerrigan", "sc_medic", "sc_scv", "sc_tank", "sc_terran", "sc_vessel", "sheogorath", "sopranos", "tf2_engineer", "wc2_peasant")
 $FallbackRepo = "PeonPing/og-packs"
@@ -207,8 +218,26 @@ if (-not $Updating) {
         silent_window_seconds = 0
         pack_rotation = @()
         pack_rotation_mode = "random"
-    } | ConvertTo-Json -Depth 3
+    }
+    $prevCulture = [System.Threading.Thread]::CurrentThread.CurrentCulture
+    try {
+        [System.Threading.Thread]::CurrentThread.CurrentCulture = [System.Globalization.CultureInfo]::InvariantCulture
+        $config = $config | ConvertTo-Json -Depth 3
+    } finally {
+        [System.Threading.Thread]::CurrentThread.CurrentCulture = $prevCulture
+    }
     Set-Content -Path $configPath -Value $config -Encoding UTF8
+}
+
+# --- Normalize config on update (repair invalid/missing volume, locale decimals) ---
+if ($Updating -and (Test-Path $configPath)) {
+    $raw = Get-PeonConfigRaw $configPath
+    try {
+        $null = $raw | ConvertFrom-Json
+    } catch {
+        $raw = $raw -replace '"volume"\s*:\s*\r?\n(\s*)"', '"volume": 0.5,$1"'
+    }
+    Set-Content -Path $configPath -Value $raw -Encoding UTF8
 }
 
 # --- Install state ---
@@ -279,6 +308,12 @@ param(
     [string]$Arg1 = ""
 )
 
+# Raw config read; repair is done at install/update time, so hook only needs plain read.
+function Get-PeonConfigRaw {
+    param([string]$Path)
+    return Get-Content $Path -Raw
+}
+
 # --- CLI commands ---
 if ($Command) {
     $InstallDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -292,7 +327,8 @@ if ($Command) {
 
     switch -Regex ($Command) {
         "^--toggle$" {
-            $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+            $raw = Get-PeonConfigRaw $ConfigPath
+            $cfg = $raw | ConvertFrom-Json
             $newState = -not $cfg.enabled
             $raw = Get-Content $ConfigPath -Raw
             $raw = $raw -replace '"enabled"\s*:\s*(true|false)', "`"enabled`": $($newState.ToString().ToLower())"
@@ -317,7 +353,7 @@ if ($Command) {
         }
         "^--status$" {
             try {
-                $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+                $cfg = Get-PeonConfigRaw $ConfigPath | ConvertFrom-Json
                 $state = if ($cfg.enabled) { "ENABLED" } else { "PAUSED" }
                 Write-Host "peon-ping: $state | pack: $($cfg.active_pack) | volume: $($cfg.volume)" -ForegroundColor Cyan
             } catch {
@@ -328,7 +364,7 @@ if ($Command) {
         }
         "^--packs$" {
             $packsDir = Join-Path $InstallDir "packs"
-            $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+            $cfg = Get-PeonConfigRaw $ConfigPath | ConvertFrom-Json
             Write-Host "Available packs:" -ForegroundColor Cyan
             Get-ChildItem -Path $packsDir -Directory | Sort-Object Name | ForEach-Object {
                 $soundCount = (Get-ChildItem -Path (Join-Path $_.FullName "sounds") -File -ErrorAction SilentlyContinue | Measure-Object).Count
@@ -340,7 +376,7 @@ if ($Command) {
             return
         }
         "^--pack$" {
-            $cfg = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+            $cfg = Get-PeonConfigRaw $ConfigPath | ConvertFrom-Json
             $packsDir = Join-Path $InstallDir "packs"
             $available = Get-ChildItem -Path $packsDir -Directory | Where-Object {
                 (Get-ChildItem -Path (Join-Path $_.FullName "sounds") -File -ErrorAction SilentlyContinue | Measure-Object).Count -gt 0
@@ -362,8 +398,9 @@ if ($Command) {
         "^--volume$" {
             if ($Arg1) {
                 $vol = [math]::Round([math]::Max(0.0, [math]::Min(1.0, [double]::Parse($Arg1.Trim(), [System.Globalization.CultureInfo]::InvariantCulture))), 2)
+                $volStr = $vol.ToString([System.Globalization.CultureInfo]::InvariantCulture)
                 $raw = Get-Content $ConfigPath -Raw
-                $raw = $raw -replace '"volume"\s*:\s*[\d.]+', "`"volume`": $vol"
+                $raw = $raw -replace '"volume"\s*:\s*[\d.,]+', "`"volume`": $volStr"
                 Set-Content $ConfigPath -Value $raw -Encoding UTF8
                 Write-Host "peon-ping: volume set to $vol" -ForegroundColor Green
             } else {
@@ -394,7 +431,7 @@ $StatePath = Join-Path $InstallDir ".state.json"
 
 # Read config
 try {
-    $config = Get-Content $ConfigPath -Raw | ConvertFrom-Json
+    $config = Get-PeonConfigRaw $ConfigPath | ConvertFrom-Json
 } catch {
     exit 0
 }
@@ -1038,7 +1075,7 @@ Write-Host ""
 Write-Host "Testing sound..."
 
 $testPack = try {
-    (Get-Content $configPath -Raw | ConvertFrom-Json).active_pack
+    (Get-PeonConfigRaw $configPath | ConvertFrom-Json).active_pack
 } catch { "peon" }
 
 $testPackDir = Join-Path $InstallDir "packs\$testPack\sounds"
@@ -1068,7 +1105,7 @@ if ($Updating) {
 } else {
     Write-Host "=== peon-ping installed! ===" -ForegroundColor Green
     Write-Host ""
-    $activePack = try { (Get-Content $configPath -Raw | ConvertFrom-Json).active_pack } catch { "peon" }
+    $activePack = try { (Get-PeonConfigRaw $configPath | ConvertFrom-Json).active_pack } catch { "peon" }
     Write-Host "  Active pack: $activePack" -ForegroundColor Cyan
     Write-Host "  Volume: 0.5" -ForegroundColor Cyan
     Write-Host ""

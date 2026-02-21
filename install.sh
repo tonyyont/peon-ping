@@ -353,6 +353,8 @@ else
   curl -fsSL "$REPO_BASE/adapters/cursor.sh" -o "$INSTALL_DIR/adapters/cursor.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/kiro.sh" -o "$INSTALL_DIR/adapters/kiro.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/antigravity.sh" -o "$INSTALL_DIR/adapters/antigravity.sh" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/adapters/gemini.sh" -o "$INSTALL_DIR/adapters/gemini.sh" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/adapters/openclaw.sh" -o "$INSTALL_DIR/adapters/openclaw.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/opencode.sh" -o "$INSTALL_DIR/adapters/opencode.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/windsurf.sh" -o "$INSTALL_DIR/adapters/windsurf.sh" 2>/dev/null || true
   mkdir -p "$INSTALL_DIR/scripts"

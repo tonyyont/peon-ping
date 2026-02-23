@@ -713,10 +713,11 @@ else:
 
 # --- Headphones-only mode ---
 headphones_only = c.get('headphones_only', False)
-if headphones_only:
-    print('peon-ping: headphones_only: on')
-    status_str = 'connected' if headphones_detected else 'not detected (sounds muted)'
-    print(f'peon-ping: headphones: {status_str}')
+print('peon-ping: headphones_only: ' + ('on' if headphones_only else 'off'))
+status_str = 'connected' if headphones_detected else 'not detected'
+if headphones_only and not headphones_detected:
+    status_str += ' (sounds muted)'
+print('peon-ping: headphones: ' + status_str)
 
 # --- Active pack ---
 active = c.get('default_pack', c.get('active_pack', 'peon'))
@@ -2635,7 +2636,6 @@ print('TAB_COLOR_RGB=' + q(tab_color_rgb))
 # If Python signalled early exit (disabled, agent, unknown event), bail out
 [ "${PEON_EXIT:-true}" = "true" ] && exit 0
 
-# --- Headphone detection (bash, uses $PLATFORM) ---
 HEADPHONES_DETECTED=true
 if [ "${HEADPHONES_ONLY:-false}" = "true" ]; then
   detect_headphones || HEADPHONES_DETECTED=false

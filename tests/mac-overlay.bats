@@ -420,3 +420,243 @@ JSON
   [[ "$(terminal_notifier_log)" == *"-appIcon"* ]]
   [[ "$(terminal_notifier_log)" == *"peon-icon.png"* ]]
 }
+
+# ============================================================
+# Configurable notification position (CLI)
+# ============================================================
+
+@test "peon notifications position shows current position" {
+  output=$(bash "$PEON_SH" notifications position 2>/dev/null)
+  [[ "$output" == *"notification position top-center"* ]]
+}
+
+@test "peon notifications position top-right sets config" {
+  bash "$PEON_SH" notifications position top-right
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert cfg['notification_position'] == 'top-right', f'Expected top-right, got {cfg[\"notification_position\"]}'
+"
+}
+
+@test "peon notifications position rejects invalid value" {
+  run bash "$PEON_SH" notifications position middle
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid position"* ]]
+}
+
+@test "peon notifications position bottom-left sets config" {
+  bash "$PEON_SH" notifications position bottom-left
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert cfg['notification_position'] == 'bottom-left'
+"
+}
+
+@test "peon status shows notification position" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_position'] = 'top-right'
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  output=$(bash "$PEON_SH" status 2>/dev/null)
+  [[ "$output" == *"notification position top-right"* ]]
+}
+
+@test "overlay passes position to mac-overlay.js" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_position'] = 'bottom-right'
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"bottom-right"* ]]
+}
+
+# ============================================================
+# Configurable dismiss time (CLI)
+# ============================================================
+
+@test "peon notifications dismiss shows current value" {
+  output=$(bash "$PEON_SH" notifications dismiss 2>/dev/null)
+  [[ "$output" == *"dismiss time"* ]]
+}
+
+@test "peon notifications dismiss 0 sets persistent mode" {
+  bash "$PEON_SH" notifications dismiss 0
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert cfg['notification_dismiss_seconds'] == 0, f'Expected 0, got {cfg[\"notification_dismiss_seconds\"]}'
+"
+}
+
+@test "peon notifications dismiss 10 sets config" {
+  bash "$PEON_SH" notifications dismiss 10
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert cfg['notification_dismiss_seconds'] == 10
+"
+}
+
+@test "peon notifications dismiss rejects negative" {
+  run bash "$PEON_SH" notifications dismiss -1
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"cannot be negative"* ]]
+}
+
+@test "peon notifications dismiss rejects non-numeric" {
+  run bash "$PEON_SH" notifications dismiss abc
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"invalid dismiss time"* ]]
+}
+
+@test "peon status shows dismiss time" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_dismiss_seconds'] = 8
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  output=$(bash "$PEON_SH" status 2>/dev/null)
+  [[ "$output" == *"dismiss time 8s"* ]]
+}
+
+@test "peon status shows persistent when dismiss is 0" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_dismiss_seconds'] = 0
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  output=$(bash "$PEON_SH" status 2>/dev/null)
+  [[ "$output" == *"persistent"* ]]
+}
+
+@test "overlay passes dismiss time to notify.sh" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_dismiss_seconds'] = 7
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  # Dismiss time is passed as argv[4] to mac-overlay.js (5th argument after script name)
+  [[ "$(overlay_log)" == *" 7 "* ]]
+}
+
+# ============================================================
+# Custom project label (CLI)
+# ============================================================
+
+@test "peon notifications label shows no override by default" {
+  output=$(bash "$PEON_SH" notifications label 2>/dev/null)
+  [[ "$output" == *"no label override"* ]]
+}
+
+@test "peon notifications label sets title override" {
+  bash "$PEON_SH" notifications label "My Vault"
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert cfg['notification_title_override'] == 'My Vault', f'Got: {cfg[\"notification_title_override\"]}'
+"
+}
+
+@test "peon notifications label reset clears override" {
+  bash "$PEON_SH" notifications label "My Vault"
+  bash "$PEON_SH" notifications label reset
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert cfg['notification_title_override'] == '', f'Expected empty, got: {cfg[\"notification_title_override\"]}'
+"
+}
+
+@test "peon notifications label shows override when set" {
+  bash "$PEON_SH" notifications label "Test Label"
+  output=$(bash "$PEON_SH" notifications label 2>/dev/null)
+  [[ "$output" == *"label override: Test Label"* ]]
+}
+
+@test "peon status shows label override when set" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_title_override'] = 'Custom Name'
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  output=$(bash "$PEON_SH" status 2>/dev/null)
+  [[ "$output" == *"label override: Custom Name"* ]]
+}
+
+# ============================================================
+# Label priority chain (project name derivation)
+# ============================================================
+
+@test "label: .peon-label file takes highest priority" {
+  mkdir -p /tmp/testproj
+  echo "Label From File" > /tmp/testproj/.peon-label
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_title_override'] = 'Static Override'
+cfg['project_name_map'] = {'*/testproj': 'Map Label'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/testproj","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"Label From File"* ]]
+  rm -f /tmp/testproj/.peon-label
+}
+
+@test "label: project_name_map overrides static and folder" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_title_override'] = 'Static Override'
+cfg['project_name_map'] = {'*/myproject': 'Mapped Name'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"Mapped Name"* ]]
+}
+
+@test "label: notification_title_override used when no file or map match" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_title_override'] = 'Global Label'
+cfg['project_name_map'] = {}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"Global Label"* ]]
+}
+
+@test "label: falls back to folder name when no overrides" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_title_override'] = ''
+cfg['project_name_map'] = {}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"myproject"* ]]
+}

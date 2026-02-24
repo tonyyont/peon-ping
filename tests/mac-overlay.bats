@@ -660,3 +660,118 @@ json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
   overlay_was_called
   [[ "$(overlay_log)" == *"myproject"* ]]
 }
+
+# ============================================================
+# Notification message templates
+# ============================================================
+
+@test "peon notifications template shows no templates by default" {
+  output=$(bash "$PEON_SH" notifications template 2>/dev/null)
+  [[ "$output" == *"no notification templates"* ]]
+}
+
+@test "peon notifications template stop sets config" {
+  bash "$PEON_SH" notifications template stop '{project}: {summary}'
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+tpls = cfg.get('notification_templates', {})
+assert tpls.get('stop') == '{project}: {summary}', f'Got: {tpls}'
+"
+}
+
+@test "peon notifications template stop shows current value" {
+  bash "$PEON_SH" notifications template stop '{project}: {summary}'
+  output=$(bash "$PEON_SH" notifications template stop 2>/dev/null)
+  [[ "$output" == *'{project}: {summary}'* ]]
+}
+
+@test "peon notifications template rejects invalid key" {
+  run bash "$PEON_SH" notifications template bogus '{project}'
+  [ "$status" -ne 0 ]
+}
+
+@test "peon notifications template --reset clears all templates" {
+  bash "$PEON_SH" notifications template stop '{project}: {summary}'
+  bash "$PEON_SH" notifications template permission '{project}: {tool_name}'
+  bash "$PEON_SH" notifications template --reset
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+assert 'notification_templates' not in cfg, f'Templates still present: {cfg}'
+"
+}
+
+@test "template: Stop with {summary} renders transcript_summary" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_templates'] = {'stop': '{project}: {summary}'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default","transcript_summary":"Fixed the login bug"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"myproject: Fixed the login bug"* ]]
+}
+
+@test "template: Stop without transcript_summary renders empty summary" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_templates'] = {'stop': '{project}: {summary}'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"myproject: "* ]]
+}
+
+@test "template: PermissionRequest with {tool_name}" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_templates'] = {'permission': '{project}: {tool_name} needs approval'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"PermissionRequest","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default","tool_name":"Bash"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"myproject: Bash needs approval"* ]]
+}
+
+@test "template: no template configured falls back to project name" {
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default","transcript_summary":"Some work done"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  local log
+  log="$(overlay_log)"
+  [[ "$log" == *"myproject"* ]]
+  [[ "$log" != *"Some work done"* ]]
+}
+
+@test "template: unknown variable renders as empty string" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_templates'] = {'stop': '{project} - {nonexistent}'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  overlay_was_called
+  [[ "$(overlay_log)" == *"myproject - "* ]]
+}
+
+@test "peon status shows templates when configured" {
+  python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_templates'] = {'stop': '{project}: {summary}'}
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'), indent=2)
+"
+  output=$(bash "$PEON_SH" status 2>/dev/null)
+  [[ "$output" == *"notification templates"* ]]
+  [[ "$output" == *"{project}: {summary}"* ]]
+}

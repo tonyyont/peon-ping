@@ -96,6 +96,7 @@ interface PeonConfig {
   categories: Partial<Record<CESPCategory, boolean>>
   spam_threshold: number
   spam_window_seconds: number
+  session_start_cooldown_seconds: number
   pack_rotation: string[]
   packs_dir?: string
   debounce_ms: number
@@ -106,6 +107,7 @@ interface PeonConfig {
 interface PeonState {
   last_played: Partial<Record<CESPCategory, string>>
   session_packs: Record<string, string>
+  last_session_start_sound_time?: number
 }
 
 // ---------------------------------------------------------------------------
@@ -172,6 +174,7 @@ const DEFAULT_CONFIG: PeonConfig = {
   },
   spam_threshold: 3,
   spam_window_seconds: 10,
+  session_start_cooldown_seconds: 30,
   pack_rotation: [],
   debounce_ms: 500,
 }
@@ -755,6 +758,21 @@ export const PeonPingPlugin: Plugin = async ({ directory }) => {
 
     // Debounce check
     if (shouldDebounce(category)) return
+
+    // Session start cooldown — only the first workspace greeting plays when many
+    // workspaces open simultaneously. Uses .state.json so it's shared across all
+    // plugin instances (each workspace spawns its own).
+    if (category === "session.start") {
+      const cooldownSecs = config.session_start_cooldown_seconds ?? 30
+      if (cooldownSecs > 0) {
+        const st = loadState()
+        const lastSS = st.last_session_start_sound_time ?? 0
+        const nowSecs = Date.now() / 1000
+        if (nowSecs - lastSS < cooldownSecs) return
+        st.last_session_start_sound_time = nowSecs
+        saveState(st)
+      }
+    }
 
     // Pick sound (needed for both playback and notification body)
     let pickedSound: CESPSound | null = null

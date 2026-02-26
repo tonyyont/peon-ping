@@ -53,9 +53,6 @@ except Exception:
 " 2>/dev/null || echo "overlay")
 fi
 
-# --- Default icon ---
-[ -z "$icon_path" ] && icon_path="$PEON_DIR/docs/peon-icon.png"
-
 # --- Sync/async mode ---
 use_bg=true
 [ "${PEON_SYNC:-0}" = "1" ] && use_bg=false
@@ -94,6 +91,76 @@ _find_overlay() {
   [ -f "$p" ] && { echo "$p"; return 0; }
   return 1
 }
+
+# --- Resolve pack icon from active pack's openpeon.json ---
+_resolve_pack_icon() {
+  [ -z "${PEON_DIR:-}" ] && return 1
+  local active_pack
+  active_pack=$(python3 -c "
+import json, sys
+try:
+    with open('${_PEON_DIR_PY}/config.json') as f:
+        d = json.load(f)
+    print(d.get('default_pack', d.get('active_pack', '')))
+except Exception:
+    print('')
+" 2>/dev/null) || return 1
+  [ -z "$active_pack" ] && return 1
+  local pack_dir="$PEON_DIR/packs/$active_pack"
+  [ -d "$pack_dir" ] || return 1
+  local pack_dir_py="$pack_dir"
+  [ "$PEON_PLATFORM" = "msys2" ] && pack_dir_py="$(cygpath -m "$pack_dir" 2>/dev/null || echo "$pack_dir")"
+  local icon_candidate
+  icon_candidate=$(python3 -c "
+import json, os, sys
+pack_dir = '${pack_dir_py}'
+for mname in ('openpeon.json', 'manifest.json'):
+    mpath = os.path.join(pack_dir, mname)
+    if os.path.exists(mpath):
+        try:
+            d = json.load(open(mpath))
+            print(d.get('icon', ''))
+        except Exception:
+            print('')
+        break
+else:
+    print('')
+" 2>/dev/null) || return 1
+  # Fallback: icon.png in pack directory
+  if [ -z "$icon_candidate" ] && [ -f "$pack_dir/icon.png" ]; then
+    echo "$pack_dir/icon.png"; return 0
+  fi
+  [ -z "$icon_candidate" ] && return 1
+  # URL icon: download to .icon_cache/
+  if [[ "$icon_candidate" == http://* ]] || [[ "$icon_candidate" == https://* ]]; then
+    local cache_dir="$PEON_DIR/.icon_cache"
+    mkdir -p "$cache_dir" 2>/dev/null || return 1
+    local url_hash
+    url_hash=$(python3 -c "import hashlib, sys; print(hashlib.md5(sys.argv[1].encode()).hexdigest())" "$icon_candidate" 2>/dev/null) || return 1
+    local ext="${icon_candidate%%\?*}"; ext="${ext##*.}"
+    [ "${#ext}" -gt 5 ] && ext="png"
+    local cached="$cache_dir/${url_hash}.${ext}"
+    if [ ! -f "$cached" ] && command -v curl &>/dev/null; then
+      curl -sf --max-time 5 -L -o "$cached" "$icon_candidate" 2>/dev/null || rm -f "$cached" 2>/dev/null
+    fi
+    [ -f "$cached" ] && { echo "$cached"; return 0; }
+    return 1
+  fi
+  # Local path: resolve and validate within pack directory
+  local icon_resolved pack_root
+  icon_resolved=$(python3 -c "import os, sys; print(os.path.realpath(os.path.join(sys.argv[1], sys.argv[2])))" "$pack_dir" "$icon_candidate" 2>/dev/null) || return 1
+  pack_root=$(python3 -c "import os, sys; print(os.path.realpath(sys.argv[1]) + os.sep)" "$pack_dir" 2>/dev/null) || return 1
+  if [ -n "$icon_resolved" ] && [ "${icon_resolved#"$pack_root"}" != "$icon_resolved" ] && [ -f "$icon_resolved" ]; then
+    echo "$icon_resolved"; return 0
+  fi
+  return 1
+}
+
+# --- Default icon (pack icon from openpeon.json, fallback to peon-icon.png) ---
+if [ -z "$icon_path" ]; then
+  icon_path="$(_resolve_pack_icon 2>/dev/null || echo "")"
+  [ -z "$icon_path" ] && icon_path="$PEON_DIR/docs/peon-icon.png"
+fi
 
 # ── Platform dispatch ────────────────────────────────────────────────────────
 case "$PEON_PLATFORM" in

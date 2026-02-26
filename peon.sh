@@ -499,7 +499,7 @@ _resolve_session_tty() {
 # Args: msg, title, color (red/blue/yellow)
 send_notification() {
   local msg="$1" title="$2" color="${3:-red}"
-  local icon_path="${4:-$PEON_DIR/docs/peon-icon.png}"
+  local icon_path="${4:-}"
 
   # Synchronous mode for tests (avoid race with backgrounded processes)
   local use_bg=true
@@ -2734,9 +2734,25 @@ if category and not paused:
             elif os.path.isfile(os.path.join(pack_dir, 'icon.png')):
                 icon_candidate = 'icon.png'
             if icon_candidate:
-                icon_resolved = os.path.realpath(os.path.join(pack_dir, icon_candidate))
-                if icon_resolved.startswith(pack_root) and os.path.isfile(icon_resolved):
-                    icon_path = icon_resolved
+                if icon_candidate.startswith(('http://', 'https://')):
+                    import hashlib, urllib.request
+                    cache_dir = os.path.join(peon_dir, '.icon_cache')
+                    os.makedirs(cache_dir, exist_ok=True)
+                    url_hash = hashlib.md5(icon_candidate.encode()).hexdigest()
+                    ext_parts = icon_candidate.split('?')[0].rsplit('.', 1)
+                    ext = ext_parts[1][:5] if len(ext_parts) > 1 else 'png'
+                    cached = os.path.join(cache_dir, url_hash + '.' + ext)
+                    if not os.path.isfile(cached):
+                        try:
+                            urllib.request.urlretrieve(icon_candidate, cached)
+                        except Exception:
+                            cached = ''
+                    if cached and os.path.isfile(cached):
+                        icon_path = cached
+                else:
+                    icon_resolved = os.path.realpath(os.path.join(pack_dir, icon_candidate))
+                    if icon_resolved.startswith(pack_root) and os.path.isfile(icon_resolved):
+                        icon_path = icon_resolved
     except Exception:
         pass
 

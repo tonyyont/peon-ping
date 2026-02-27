@@ -394,11 +394,12 @@ def send_notification_on_host(title, message, color="red"):
     notify_script = os.path.join(PEON_DIR, "scripts", "notify.sh")
     if os.path.isfile(notify_script):
         config = load_config()
-        notif_style = config.get("notification_style", "overlay")
         icon_path = os.path.join(PEON_DIR, "docs", "peon-icon.png")
         env = os.environ.copy()
         env["PEON_PLATFORM"] = HOST_PLATFORM
-        env["PEON_NOTIF_STYLE"] = notif_style
+        env["PEON_NOTIF_STYLE"] = config.get("notification_style", "overlay")
+        env["PEON_NOTIF_POSITION"] = config.get("notification_position", "top-center")
+        env["PEON_NOTIF_DISMISS"] = str(config.get("notification_dismiss_seconds", 4))
         env["PEON_DIR"] = PEON_DIR
         env["PEON_SYNC"] = os.environ.get("PEON_TEST", "0")
         subprocess.Popen(

@@ -1,4 +1,4 @@
-# Pester tests for Windows PowerShell adapters (.ps1)
+# Pester 5 tests for Windows PowerShell adapters (.ps1)
 # Run: Invoke-Pester -Path tests/adapters-windows.Tests.ps1
 #
 # These tests validate:
@@ -10,28 +10,31 @@
 # - No ExecutionPolicy Bypass in any adapter
 # - peon.ps1 path resolution patterns
 
-$RepoRoot = Split-Path $PSScriptRoot -Parent
-$AdaptersDir = Join-Path $RepoRoot "adapters"
+BeforeAll {
+    $script:RepoRoot = Split-Path $PSScriptRoot -Parent
+    $script:AdaptersDir = Join-Path $script:RepoRoot "adapters"
+}
 
 # ============================================================
 # Syntax validation
 # ============================================================
 
 Describe "PowerShell Syntax Validation" {
-    $categoryA = @("codex", "gemini", "copilot", "windsurf", "kiro", "openclaw")
-    $categoryB = @("amp", "antigravity", "kimi")
-    $categoryC = @("opencode", "kilo")
-    $allAdapters = $categoryA + $categoryB + $categoryC
+    $allAdapters = @("codex", "gemini", "copilot", "windsurf", "kiro", "openclaw",
+                     "amp", "antigravity", "kimi", "opencode", "kilo")
 
-    foreach ($name in $allAdapters) {
-        It "adapters/$name.ps1 has valid PowerShell syntax" {
-            $path = Join-Path $AdaptersDir "$name.ps1"
-            $path | Should -Exist
-            $content = Get-Content $path -Raw
-            $errors = $null
-            $null = [System.Management.Automation.PSParser]::Tokenize($content, [ref]$errors)
-            $errors.Count | Should -Be 0
-        }
+    It "adapters/<name>.ps1 has valid PowerShell syntax" -ForEach @(
+        @{ name = "codex" }, @{ name = "gemini" }, @{ name = "copilot" },
+        @{ name = "windsurf" }, @{ name = "kiro" }, @{ name = "openclaw" },
+        @{ name = "amp" }, @{ name = "antigravity" }, @{ name = "kimi" },
+        @{ name = "opencode" }, @{ name = "kilo" }
+    ) {
+        $path = Join-Path $script:AdaptersDir "$name.ps1"
+        $path | Should -Exist
+        $content = Get-Content $path -Raw
+        $errors = $null
+        $null = [System.Management.Automation.PSParser]::Tokenize($content, [ref]$errors)
+        $errors.Count | Should -Be 0
     }
 }
 
@@ -40,19 +43,19 @@ Describe "PowerShell Syntax Validation" {
 # ============================================================
 
 Describe "No ExecutionPolicy Bypass" {
-    $allAdapters = @("codex", "gemini", "copilot", "windsurf", "kiro", "openclaw",
-                     "amp", "antigravity", "kimi", "opencode", "kilo")
-
-    foreach ($name in $allAdapters) {
-        It "adapters/$name.ps1 does not use ExecutionPolicy Bypass" {
-            $path = Join-Path $AdaptersDir "$name.ps1"
-            $content = Get-Content $path -Raw
-            $content | Should -Not -Match "ExecutionPolicy Bypass"
-        }
+    It "adapters/<name>.ps1 does not use ExecutionPolicy Bypass" -ForEach @(
+        @{ name = "codex" }, @{ name = "gemini" }, @{ name = "copilot" },
+        @{ name = "windsurf" }, @{ name = "kiro" }, @{ name = "openclaw" },
+        @{ name = "amp" }, @{ name = "antigravity" }, @{ name = "kimi" },
+        @{ name = "opencode" }, @{ name = "kilo" }
+    ) {
+        $path = Join-Path $script:AdaptersDir "$name.ps1"
+        $content = Get-Content $path -Raw
+        $content | Should -Not -Match "ExecutionPolicy Bypass"
     }
 
     It "install.ps1 does not use ExecutionPolicy Bypass" {
-        $path = Join-Path $RepoRoot "install.ps1"
+        $path = Join-Path $script:RepoRoot "install.ps1"
         $content = Get-Content $path -Raw
         $content | Should -Not -Match "ExecutionPolicy Bypass"
     }
@@ -63,183 +66,189 @@ Describe "No ExecutionPolicy Bypass" {
 # ============================================================
 
 Describe "Category A: Codex Adapter" {
-    $script = Join-Path $AdaptersDir "codex.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:codexContent = Get-Content (Join-Path $script:AdaptersDir "codex.ps1") -Raw
+    }
 
     It "accepts Event parameter" {
-        $content | Should -Match 'param\('
-        $content | Should -Match '\[string\]\$Event'
+        $script:codexContent | Should -Match 'param\('
+        $script:codexContent | Should -Match '\[string\]\$Event'
     }
 
     It "maps agent-turn-complete to Stop" {
-        $content | Should -Match '"agent-turn-complete".*"complete".*"done"'
-        $content | Should -Match '\$mapped = "Stop"'
+        $script:codexContent | Should -Match '"agent-turn-complete".*"complete".*"done"'
+        $script:codexContent | Should -Match '\$mapped = "Stop"'
     }
 
     It "maps start/session-start to SessionStart" {
-        $content | Should -Match '"start".*"session-start"'
-        $content | Should -Match '\$mapped = "SessionStart"'
+        $script:codexContent | Should -Match '"start".*"session-start"'
+        $script:codexContent | Should -Match '\$mapped = "SessionStart"'
     }
 
     It "maps permission events to Notification with permission_prompt" {
-        $content | Should -Match 'permission'
-        $content | Should -Match '\$ntype = "permission_prompt"'
+        $script:codexContent | Should -Match 'permission'
+        $script:codexContent | Should -Match '\$ntype = "permission_prompt"'
     }
 
     It "pipes JSON to peon.ps1" {
-        $content | Should -Match 'peon\.ps1'
-        $content | Should -Match 'ConvertTo-Json'
+        $script:codexContent | Should -Match 'peon\.ps1'
+        $script:codexContent | Should -Match 'ConvertTo-Json'
     }
 }
 
 Describe "Category A: Gemini Adapter" {
-    $script = Join-Path $AdaptersDir "gemini.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:geminiContent = Get-Content (Join-Path $script:AdaptersDir "gemini.ps1") -Raw
+    }
 
     It "accepts EventType parameter" {
-        $content | Should -Match '\[string\]\$EventType'
+        $script:geminiContent | Should -Match '\[string\]\$EventType'
     }
 
     It "maps SessionStart to SessionStart" {
-        $content | Should -Match '"SessionStart"\s*\{[^}]*\$mapped = "SessionStart"'
+        $script:geminiContent | Should -Match '"SessionStart"\s*\{[^}]*\$mapped = "SessionStart"'
     }
 
     It "maps AfterAgent to Stop" {
-        $content | Should -Match '"AfterAgent"\s*\{[^}]*\$mapped = "Stop"'
+        $script:geminiContent | Should -Match '"AfterAgent"\s*\{[^}]*\$mapped = "Stop"'
     }
 
     It "maps AfterTool with non-zero exit to PostToolUseFailure" {
-        $content | Should -Match 'PostToolUseFailure'
+        $script:geminiContent | Should -Match 'PostToolUseFailure'
     }
 
     It "reads JSON from stdin" {
-        $content | Should -Match 'IsInputRedirected'
-        $content | Should -Match 'StreamReader'
+        $script:geminiContent | Should -Match 'IsInputRedirected'
+        $script:geminiContent | Should -Match 'StreamReader'
     }
 
     It "returns empty JSON object to Gemini" {
-        $content | Should -Match 'Write-Output "\{\}"'
+        $script:geminiContent | Should -Match 'Write-Output "\{\}"'
     }
 }
 
 Describe "Category A: Copilot Adapter" {
-    $script = Join-Path $AdaptersDir "copilot.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:copilotContent = Get-Content (Join-Path $script:AdaptersDir "copilot.ps1") -Raw
+    }
 
     It "maps sessionStart to SessionStart" {
-        $content | Should -Match '"sessionStart"\s*\{[^}]*\$mapped = "SessionStart"'
+        $script:copilotContent | Should -Match '"sessionStart"\s*\{[^}]*\$mapped = "SessionStart"'
     }
 
     It "maps postToolUse to Stop" {
-        $content | Should -Match '"postToolUse"\s*\{[^}]*\$mapped = "Stop"'
+        $script:copilotContent | Should -Match '"postToolUse"\s*\{[^}]*\$mapped = "Stop"'
     }
 
     It "maps errorOccurred to PostToolUseFailure" {
-        $content | Should -Match '"errorOccurred"\s*\{[^}]*\$mapped = "PostToolUseFailure"'
+        $script:copilotContent | Should -Match '"errorOccurred"\s*\{[^}]*\$mapped = "PostToolUseFailure"'
     }
 
     It "handles first userPromptSubmitted as SessionStart" {
-        $content | Should -Match 'copilot-session'
-        $content | Should -Match '\$mapped = "SessionStart"'
+        $script:copilotContent | Should -Match 'copilot-session'
+        $script:copilotContent | Should -Match '\$mapped = "SessionStart"'
     }
 
     It "handles subsequent userPromptSubmitted as UserPromptSubmit" {
-        $content | Should -Match '\$mapped = "UserPromptSubmit"'
+        $script:copilotContent | Should -Match '\$mapped = "UserPromptSubmit"'
     }
 
     It "exits gracefully for sessionEnd" {
-        $content | Should -Match '"sessionEnd"'
-        $content | Should -Match 'exit 0'
+        $script:copilotContent | Should -Match '"sessionEnd"'
+        $script:copilotContent | Should -Match 'exit 0'
     }
 
     It "exits gracefully for preToolUse (too noisy)" {
-        $content | Should -Match '"preToolUse"'
+        $script:copilotContent | Should -Match '"preToolUse"'
     }
 }
 
 Describe "Category A: Windsurf Adapter" {
-    $script = Join-Path $AdaptersDir "windsurf.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:windsurfContent = Get-Content (Join-Path $script:AdaptersDir "windsurf.ps1") -Raw
+    }
 
     It "maps post_cascade_response to Stop" {
-        $content | Should -Match '"post_cascade_response"\s*\{[^}]*\$mapped = "Stop"'
+        $script:windsurfContent | Should -Match '"post_cascade_response"\s*\{[^}]*\$mapped = "Stop"'
     }
 
     It "handles pre_user_prompt session detection" {
-        $content | Should -Match 'windsurf-session'
-        $content | Should -Match '"pre_user_prompt"'
+        $script:windsurfContent | Should -Match 'windsurf-session'
+        $script:windsurfContent | Should -Match '"pre_user_prompt"'
     }
 
     It "maps post_write_code to Stop" {
-        $content | Should -Match '"post_write_code"'
+        $script:windsurfContent | Should -Match '"post_write_code"'
     }
 
     It "maps post_run_command to Stop" {
-        $content | Should -Match '"post_run_command"'
+        $script:windsurfContent | Should -Match '"post_run_command"'
     }
 
     It "drains stdin" {
-        $content | Should -Match 'IsInputRedirected'
+        $script:windsurfContent | Should -Match 'IsInputRedirected'
     }
 }
 
 Describe "Category A: Kiro Adapter" {
-    $script = Join-Path $AdaptersDir "kiro.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:kiroContent = Get-Content (Join-Path $script:AdaptersDir "kiro.ps1") -Raw
+    }
 
     It "remaps agentSpawn to SessionStart" {
-        $content | Should -Match '"agentSpawn"\s*=\s*"SessionStart"'
+        $script:kiroContent | Should -Match '"agentSpawn"\s*=\s*"SessionStart"'
     }
 
     It "remaps userPromptSubmit to UserPromptSubmit" {
-        $content | Should -Match '"userPromptSubmit"\s*=\s*"UserPromptSubmit"'
+        $script:kiroContent | Should -Match '"userPromptSubmit"\s*=\s*"UserPromptSubmit"'
     }
 
     It "remaps stop to Stop" {
-        $content | Should -Match '"stop"\s*=\s*"Stop"'
+        $script:kiroContent | Should -Match '"stop"\s*=\s*"Stop"'
     }
 
     It "prefixes session_id with kiro-" {
-        $content | Should -Match '"kiro-\$sid"'
+        $script:kiroContent | Should -Match '"kiro-\$sid"'
     }
 
     It "skips unknown events" {
-        $content | Should -Match 'if \(-not \$mapped\)'
-        $content | Should -Match 'exit 0'
+        $script:kiroContent | Should -Match 'if \(-not \$mapped\)'
+        $script:kiroContent | Should -Match 'exit 0'
     }
 }
 
 Describe "Category A: OpenClaw Adapter" {
-    $script = Join-Path $AdaptersDir "openclaw.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:openclawContent = Get-Content (Join-Path $script:AdaptersDir "openclaw.ps1") -Raw
+    }
 
     It "maps session.start to SessionStart" {
-        $content | Should -Match '"session\.start"'
-        $content | Should -Match '\$mapped = "SessionStart"'
+        $script:openclawContent | Should -Match '"session\.start"'
+        $script:openclawContent | Should -Match '\$mapped = "SessionStart"'
     }
 
     It "maps task.complete to Stop" {
-        $content | Should -Match '"task\.complete"'
-        $content | Should -Match '\$mapped = "Stop"'
+        $script:openclawContent | Should -Match '"task\.complete"'
+        $script:openclawContent | Should -Match '\$mapped = "Stop"'
     }
 
     It "maps task.error to PostToolUseFailure" {
-        $content | Should -Match '"task\.error"'
-        $content | Should -Match '\$mapped = "PostToolUseFailure"'
+        $script:openclawContent | Should -Match '"task\.error"'
+        $script:openclawContent | Should -Match '\$mapped = "PostToolUseFailure"'
     }
 
     It "maps input.required to Notification with permission_prompt" {
-        $content | Should -Match '"input\.required"'
-        $content | Should -Match '\$ntype = "permission_prompt"'
+        $script:openclawContent | Should -Match '"input\.required"'
+        $script:openclawContent | Should -Match '\$ntype = "permission_prompt"'
     }
 
     It "maps resource.limit to Notification with resource_limit" {
-        $content | Should -Match '"resource\.limit"'
-        $content | Should -Match '\$ntype = "resource_limit"'
+        $script:openclawContent | Should -Match '"resource\.limit"'
+        $script:openclawContent | Should -Match '\$ntype = "resource_limit"'
     }
 
     It "accepts raw Claude Code event names" {
-        $content | Should -Match '"SessionStart", "Stop", "Notification"'
+        $script:openclawContent | Should -Match '"SessionStart", "Stop", "Notification"'
     }
 }
 
@@ -248,125 +257,128 @@ Describe "Category A: OpenClaw Adapter" {
 # ============================================================
 
 Describe "Category B: Amp Adapter" {
-    $script = Join-Path $AdaptersDir "amp.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:ampContent = Get-Content (Join-Path $script:AdaptersDir "amp.ps1") -Raw
+    }
 
     It "has Install/Uninstall/Status daemon flags" {
-        $content | Should -Match '\[switch\]\$Install'
-        $content | Should -Match '\[switch\]\$Uninstall'
-        $content | Should -Match '\[switch\]\$Status'
+        $script:ampContent | Should -Match '\[switch\]\$Install'
+        $script:ampContent | Should -Match '\[switch\]\$Uninstall'
+        $script:ampContent | Should -Match '\[switch\]\$Status'
     }
 
     It "uses FileSystemWatcher" {
-        $content | Should -Match 'System\.IO\.FileSystemWatcher'
+        $script:ampContent | Should -Match 'System\.IO\.FileSystemWatcher'
     }
 
     It "watches T-*.json files" {
-        $content | Should -Match 'T-\*\.json'
+        $script:ampContent | Should -Match 'T-\*\.json'
     }
 
     It "has idle detection logic" {
-        $content | Should -Match 'IdleSeconds'
-        $content | Should -Match 'StopCooldown'
+        $script:ampContent | Should -Match 'IdleSeconds'
+        $script:ampContent | Should -Match 'StopCooldown'
     }
 
     It "checks if thread is waiting for user input" {
-        $content | Should -Match 'Test-ThreadWaiting'
-        $content | Should -Match 'tool_use'
+        $script:ampContent | Should -Match 'Test-ThreadWaiting'
+        $script:ampContent | Should -Match 'tool_use'
     }
 
     It "has PID file management" {
-        $content | Should -Match '\.amp-adapter\.pid'
+        $script:ampContent | Should -Match '\.amp-adapter\.pid'
     }
 
     It "tries Windows-native AMP_DATA_DIR path first" {
-        $content | Should -Match 'LOCALAPPDATA'
+        $script:ampContent | Should -Match 'LOCALAPPDATA'
     }
 }
 
 Describe "Category B: Antigravity Adapter" {
-    $script = Join-Path $AdaptersDir "antigravity.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:antigravityContent = Get-Content (Join-Path $script:AdaptersDir "antigravity.ps1") -Raw
+    }
 
     It "has Install/Uninstall/Status daemon flags" {
-        $content | Should -Match '\[switch\]\$Install'
-        $content | Should -Match '\[switch\]\$Uninstall'
-        $content | Should -Match '\[switch\]\$Status'
+        $script:antigravityContent | Should -Match '\[switch\]\$Install'
+        $script:antigravityContent | Should -Match '\[switch\]\$Uninstall'
+        $script:antigravityContent | Should -Match '\[switch\]\$Status'
     }
 
     It "uses FileSystemWatcher" {
-        $content | Should -Match 'System\.IO\.FileSystemWatcher'
+        $script:antigravityContent | Should -Match 'System\.IO\.FileSystemWatcher'
     }
 
     It "watches *.pb files" {
-        $content | Should -Match '\*\.pb'
+        $script:antigravityContent | Should -Match '\*\.pb'
     }
 
     It "has idle detection logic" {
-        $content | Should -Match 'IdleSeconds'
-        $content | Should -Match 'StopCooldown'
+        $script:antigravityContent | Should -Match 'IdleSeconds'
+        $script:antigravityContent | Should -Match 'StopCooldown'
     }
 
     It "has PID file management" {
-        $content | Should -Match '\.antigravity-adapter\.pid'
+        $script:antigravityContent | Should -Match '\.antigravity-adapter\.pid'
     }
 }
 
 Describe "Category B: Kimi Adapter" {
-    $script = Join-Path $AdaptersDir "kimi.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:kimiContent = Get-Content (Join-Path $script:AdaptersDir "kimi.ps1") -Raw
+    }
 
     It "has Install/Uninstall/Status/Help flags" {
-        $content | Should -Match '\[switch\]\$Install'
-        $content | Should -Match '\[switch\]\$Uninstall'
-        $content | Should -Match '\[switch\]\$Status'
-        $content | Should -Match '\[switch\]\$Help'
+        $script:kimiContent | Should -Match '\[switch\]\$Install'
+        $script:kimiContent | Should -Match '\[switch\]\$Uninstall'
+        $script:kimiContent | Should -Match '\[switch\]\$Status'
+        $script:kimiContent | Should -Match '\[switch\]\$Help'
     }
 
     It "uses FileSystemWatcher" {
-        $content | Should -Match 'System\.IO\.FileSystemWatcher'
+        $script:kimiContent | Should -Match 'System\.IO\.FileSystemWatcher'
     }
 
     It "watches wire.jsonl files with subdirectory recursion" {
-        $content | Should -Match 'wire\.jsonl'
-        $content | Should -Match 'IncludeSubdirectories.*true'
+        $script:kimiContent | Should -Match 'wire\.jsonl'
+        $script:kimiContent | Should -Match 'IncludeSubdirectories.*true'
     }
 
     It "maps TurnEnd to Stop" {
-        $content | Should -Match '"TurnEnd".*"Stop"'
+        $script:kimiContent | Should -Match '"TurnEnd".*"Stop"'
     }
 
     It "maps TurnBegin to SessionStart for new sessions" {
-        $content | Should -Match '"TurnBegin"'
-        $content | Should -Match '"SessionStart"'
+        $script:kimiContent | Should -Match '"TurnBegin"'
+        $script:kimiContent | Should -Match '"SessionStart"'
     }
 
     It "maps SubagentEvent with TurnBegin to SubagentStart" {
-        $content | Should -Match '"SubagentEvent"'
-        $content | Should -Match '"SubagentStart"'
+        $script:kimiContent | Should -Match '"SubagentEvent"'
+        $script:kimiContent | Should -Match '"SubagentStart"'
     }
 
     It "maps CompactionBegin to PreCompact" {
-        $content | Should -Match '"CompactionBegin".*"PreCompact"'
+        $script:kimiContent | Should -Match '"CompactionBegin".*"PreCompact"'
     }
 
     It "has /clear detection logic" {
-        $content | Should -Match 'ClearGraceSeconds'
-        $content | Should -Match 'lastNewSession'
+        $script:kimiContent | Should -Match 'ClearGraceSeconds'
+        $script:kimiContent | Should -Match 'lastNewSession'
     }
 
     It "resolves CWD from workspace hash using MD5" {
-        $content | Should -Match 'Resolve-KimiCwd'
-        $content | Should -Match 'MD5'
+        $script:kimiContent | Should -Match 'Resolve-KimiCwd'
+        $script:kimiContent | Should -Match 'MD5'
     }
 
     It "reads new bytes from wire.jsonl using offset tracking" {
-        $content | Should -Match 'sessionOffset'
-        $content | Should -Match 'FileStream'
+        $script:kimiContent | Should -Match 'sessionOffset'
+        $script:kimiContent | Should -Match 'FileStream'
     }
 
     It "has PID file management" {
-        $content | Should -Match '\.kimi-adapter\.pid'
+        $script:kimiContent | Should -Match '\.kimi-adapter\.pid'
     }
 }
 
@@ -375,56 +387,58 @@ Describe "Category B: Kimi Adapter" {
 # ============================================================
 
 Describe "Category C: OpenCode Installer" {
-    $script = Join-Path $AdaptersDir "opencode.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:opencodeContent = Get-Content (Join-Path $script:AdaptersDir "opencode.ps1") -Raw
+    }
 
     It "has Uninstall flag" {
-        $content | Should -Match '\[switch\]\$Uninstall'
+        $script:opencodeContent | Should -Match '\[switch\]\$Uninstall'
     }
 
     It "downloads the peon-ping.ts plugin" {
-        $content | Should -Match 'peon-ping\.ts'
-        $content | Should -Match 'Invoke-WebRequest'
+        $script:opencodeContent | Should -Match 'peon-ping\.ts'
+        $script:opencodeContent | Should -Match 'Invoke-WebRequest'
     }
 
     It "creates default config.json" {
-        $content | Should -Match 'config\.json'
-        $content | Should -Match 'active_pack'
+        $script:opencodeContent | Should -Match 'config\.json'
+        $script:opencodeContent | Should -Match 'active_pack'
     }
 
     It "installs default pack from registry" {
-        $content | Should -Match 'peonping\.github\.io/registry'
+        $script:opencodeContent | Should -Match 'peonping\.github\.io/registry'
     }
 
     It "uses LOCALAPPDATA for Windows-native path" {
-        $content | Should -Match 'LOCALAPPDATA'
+        $script:opencodeContent | Should -Match 'LOCALAPPDATA'
     }
 }
 
 Describe "Category C: Kilo Installer" {
-    $script = Join-Path $AdaptersDir "kilo.ps1"
-    $content = Get-Content $script -Raw
+    BeforeAll {
+        $script:kiloContent = Get-Content (Join-Path $script:AdaptersDir "kilo.ps1") -Raw
+    }
 
     It "has Uninstall flag" {
-        $content | Should -Match '\[switch\]\$Uninstall'
+        $script:kiloContent | Should -Match '\[switch\]\$Uninstall'
     }
 
     It "downloads and patches OpenCode plugin for Kilo" {
-        $content | Should -Match 'peon-ping\.ts'
-        $content | Should -Match '@kilocode/plugin'
+        $script:kiloContent | Should -Match 'peon-ping\.ts'
+        $script:kiloContent | Should -Match '@kilocode/plugin'
     }
 
     It "patches config path from opencode to kilo" {
-        $content | Should -Match '".config", "kilo", "peon-ping"'
+        $script:kiloContent | Should -Match '".config", "kilo", "peon-ping"'
     }
 
     It "creates default config.json" {
-        $content | Should -Match 'config\.json'
-        $content | Should -Match 'active_pack'
+        $script:kiloContent | Should -Match 'config\.json'
+        $script:kiloContent | Should -Match 'active_pack'
     }
 
     It "installs default pack from registry" {
-        $content | Should -Match 'peonping\.github\.io/registry'
+        $script:kiloContent | Should -Match 'peonping\.github\.io/registry'
     }
 }
 
@@ -433,40 +447,41 @@ Describe "Category C: Kilo Installer" {
 # ============================================================
 
 Describe "install.ps1 Adapter Installation" {
-    $installScript = Join-Path $RepoRoot "install.ps1"
-    $content = Get-Content $installScript -Raw
+    BeforeAll {
+        $script:installContent = Get-Content (Join-Path $script:RepoRoot "install.ps1") -Raw
+    }
 
     It "installs adapter scripts to adapters/ directory" {
-        $content | Should -Match 'Installing adapter scripts'
-        $content | Should -Match 'adapters'
+        $script:installContent | Should -Match 'Installing adapter scripts'
+        $script:installContent | Should -Match 'adapters'
     }
 
     It "installs all 11 adapter files" {
-        $content | Should -Match 'codex\.ps1'
-        $content | Should -Match 'gemini\.ps1'
-        $content | Should -Match 'copilot\.ps1'
-        $content | Should -Match 'windsurf\.ps1'
-        $content | Should -Match 'kiro\.ps1'
-        $content | Should -Match 'openclaw\.ps1'
-        $content | Should -Match 'amp\.ps1'
-        $content | Should -Match 'antigravity\.ps1'
-        $content | Should -Match 'kimi\.ps1'
-        $content | Should -Match 'opencode\.ps1'
-        $content | Should -Match 'kilo\.ps1'
+        $script:installContent | Should -Match 'codex\.ps1'
+        $script:installContent | Should -Match 'gemini\.ps1'
+        $script:installContent | Should -Match 'copilot\.ps1'
+        $script:installContent | Should -Match 'windsurf\.ps1'
+        $script:installContent | Should -Match 'kiro\.ps1'
+        $script:installContent | Should -Match 'openclaw\.ps1'
+        $script:installContent | Should -Match 'amp\.ps1'
+        $script:installContent | Should -Match 'antigravity\.ps1'
+        $script:installContent | Should -Match 'kimi\.ps1'
+        $script:installContent | Should -Match 'opencode\.ps1'
+        $script:installContent | Should -Match 'kilo\.ps1'
     }
 
     It "calls Unblock-File on installed adapters" {
-        $content | Should -Match 'Unblock-File'
+        $script:installContent | Should -Match 'Unblock-File'
     }
 
     It "has execution policy detection" {
-        $content | Should -Match 'Get-ExecutionPolicy'
-        $content | Should -Match 'Restricted'
+        $script:installContent | Should -Match 'Get-ExecutionPolicy'
+        $script:installContent | Should -Match 'Restricted'
     }
 
     It "handles missing Claude Code gracefully" {
-        $content | Should -Match 'ClaudeCodeDetected'
-        $content | Should -Match 'Skipping Claude Code hook registration'
+        $script:installContent | Should -Match 'ClaudeCodeDetected'
+        $script:installContent | Should -Match 'Skipping Claude Code hook registration'
     }
 }
 
@@ -475,20 +490,23 @@ Describe "install.ps1 Adapter Installation" {
 # ============================================================
 
 Describe "All adapters resolve peon.ps1 via CLAUDE_PEON_DIR" {
-    $allAdapters = @("codex", "gemini", "copilot", "windsurf", "kiro", "openclaw",
-                     "amp", "antigravity", "kimi")
+    It "adapters/<name>.ps1 checks CLAUDE_PEON_DIR env var" -ForEach @(
+        @{ name = "codex" }, @{ name = "gemini" }, @{ name = "copilot" },
+        @{ name = "windsurf" }, @{ name = "kiro" }, @{ name = "openclaw" },
+        @{ name = "amp" }, @{ name = "antigravity" }, @{ name = "kimi" }
+    ) {
+        $path = Join-Path $script:AdaptersDir "$name.ps1"
+        $content = Get-Content $path -Raw
+        $content | Should -Match 'CLAUDE_PEON_DIR'
+    }
 
-    foreach ($name in $allAdapters) {
-        It "adapters/$name.ps1 checks CLAUDE_PEON_DIR env var" {
-            $path = Join-Path $AdaptersDir "$name.ps1"
-            $content = Get-Content $path -Raw
-            $content | Should -Match 'CLAUDE_PEON_DIR'
-        }
-
-        It "adapters/$name.ps1 falls back to ~/.claude/hooks/peon-ping" {
-            $path = Join-Path $AdaptersDir "$name.ps1"
-            $content = Get-Content $path -Raw
-            $content | Should -Match '\.claude\\hooks\\peon-ping'
-        }
+    It "adapters/<name>.ps1 falls back to ~/.claude/hooks/peon-ping" -ForEach @(
+        @{ name = "codex" }, @{ name = "gemini" }, @{ name = "copilot" },
+        @{ name = "windsurf" }, @{ name = "kiro" }, @{ name = "openclaw" },
+        @{ name = "amp" }, @{ name = "antigravity" }, @{ name = "kimi" }
+    ) {
+        $path = Join-Path $script:AdaptersDir "$name.ps1"
+        $content = Get-Content $path -Raw
+        $content | Should -Match '\.claude\\hooks\\peon-ping'
     }
 }

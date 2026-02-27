@@ -6,11 +6,11 @@
 ![macOS](https://img.shields.io/badge/macOS-blue) ![WSL2](https://img.shields.io/badge/WSL2-blue) ![Linux](https://img.shields.io/badge/Linux-blue) ![Windows](https://img.shields.io/badge/Windows-blue) ![MSYS2](https://img.shields.io/badge/MSYS2-blue) ![SSH](https://img.shields.io/badge/SSH-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-![Claude Code](https://img.shields.io/badge/Claude_Code-hook-ffab01) ![Amp](https://img.shields.io/badge/Amp-adapter-ffab01) ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-adapter-ffab01) ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-adapter-ffab01) ![Codex](https://img.shields.io/badge/Codex-adapter-ffab01) ![Cursor](https://img.shields.io/badge/Cursor-adapter-ffab01) ![OpenCode](https://img.shields.io/badge/OpenCode-adapter-ffab01) ![Kilo CLI](https://img.shields.io/badge/Kilo_CLI-adapter-ffab01) ![Kiro](https://img.shields.io/badge/Kiro-adapter-ffab01) ![Windsurf](https://img.shields.io/badge/Windsurf-adapter-ffab01) ![Antigravity](https://img.shields.io/badge/Antigravity-adapter-ffab01) ![OpenClaw](https://img.shields.io/badge/OpenClaw-adapter-ffab01)
+![Claude Code](https://img.shields.io/badge/Claude_Code-hook-ffab01) ![Amp](https://img.shields.io/badge/Amp-adapter-ffab01) ![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-adapter-ffab01) ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-adapter-ffab01) ![Codex](https://img.shields.io/badge/Codex-adapter-ffab01) ![Cursor](https://img.shields.io/badge/Cursor-adapter-ffab01) ![OpenCode](https://img.shields.io/badge/OpenCode-adapter-ffab01) ![Kilo CLI](https://img.shields.io/badge/Kilo_CLI-adapter-ffab01) ![Kiro](https://img.shields.io/badge/Kiro-adapter-ffab01) ![Kimi Code](https://img.shields.io/badge/Kimi_Code-adapter-ffab01) ![Windsurf](https://img.shields.io/badge/Windsurf-adapter-ffab01) ![Antigravity](https://img.shields.io/badge/Antigravity-adapter-ffab01) ![OpenClaw](https://img.shields.io/badge/OpenClaw-adapter-ffab01)
 
 **当你的 AI 编程助手需要关注时，播放游戏角色语音 + 显示视觉覆盖通知 — 或通过 MCP 让 AI 自行选择音效。**
 
-AI 编程助手完成任务或需要权限时不会通知你。你切换标签页、失去焦点，然后浪费 15 分钟重新进入状态。peon-ping 通过魔兽争霸、星际争霸、传送门、塞尔达等游戏的角色语音和醒目的屏幕横幅来解决这个问题 — 支持 **Claude Code**、**Amp**、**Gemini CLI**、**GitHub Copilot**、**Codex**、**Cursor**、**OpenCode**、**Kilo CLI**、**Kiro**、**Windsurf**、**Google Antigravity**、**OpenClaw** 及任何 MCP 客户端.
+AI 编程助手完成任务或需要权限时不会通知你。你切换标签页、失去焦点，然后浪费 15 分钟重新进入状态。peon-ping 通过魔兽争霸、星际争霸、传送门、塞尔达等游戏的角色语音和醒目的屏幕横幅来解决这个问题 — 支持 **Claude Code**、**Amp**、**Gemini CLI**、**GitHub Copilot**、**Codex**、**Cursor**、**OpenCode**、**Kilo CLI**、**Kiro**、**Kimi Code**、**Windsurf**、**Google Antigravity**、**OpenClaw** 及任何 MCP 客户端.
 
 **查看演示** &rarr; [peonping.com](https://peonping.com/)
 
@@ -354,6 +354,7 @@ peon-ping 适用于任何支持钩子的代理式 IDE。适配器将 IDE 特定�
 | **Kiro** | 适配器 | 在 `~/.kiro/agents/peon-ping.json` 中添加指向 `adapters/kiro.sh` 的钩子条目（[设置](#kiro-设置)） |
 | **Windsurf** | 适配器 | 在 `~/.codeium/windsurf/hooks.json` 中添加指向 `adapters/windsurf.sh` 的钩子条目（[设置](#windsurf-设置)） |
 | **Google Antigravity** | 适配器 | `bash ~/.claude/hooks/peon-ping/adapters/antigravity.sh`（需要 `fswatch`：`brew install fswatch`） |
+| **Kimi Code** | 适配器 | `bash ~/.claude/hooks/peon-ping/adapters/kimi.sh --install`（需要 `fswatch`：`brew install fswatch`）（[设置](#kimi-code-设置)） |
 | **OpenClaw** | 适配器 | 在 OpenClaw 技能中调用 `adapters/openclaw.sh <event>`，支持所有 CESP 分类和原生 Claude Code 事件名 |
 
 ### Amp 设置
@@ -631,6 +632,28 @@ curl -fsSL https://raw.githubusercontent.com/PeonPing/peon-ping/main/adapters/ki
 ```
 
 `preToolUse`/`postToolUse` 被有意排除 — 它们会在每次工具调用时触发，会非常嘈杂。
+
+### Kimi Code 设置
+
+[Kimi Code CLI](https://github.com/MoonshotAI/kimi-cli)（MoonshotAI）的文件系统监视适配器。Kimi Code 将 Wire Mode 事件写入 `~/.kimi/sessions/` — 该适配器作为后台守护进程监视这些文件并将事件转换为 CESP 格式。
+
+```bash
+# 安装（启动后台守护进程）
+bash ~/.claude/hooks/peon-ping/adapters/kimi.sh --install
+
+# 查看状态 / 停止
+bash ~/.claude/hooks/peon-ping/adapters/kimi.sh --status
+bash ~/.claude/hooks/peon-ping/adapters/kimi.sh --uninstall
+```
+
+macOS 需要 `fswatch`（`brew install fswatch`），Linux 需要 `inotifywait`（`apt install inotify-tools`）。`curl | bash` 安装器会自动检测 Kimi Code 并启动守护进程。
+
+**事件映射：**
+
+- 新会话 → 问候音效（*"Ready to work?"*、*"Yes?"*）
+- Agent 完成回合 → 完成音效（*"Work, work."*、*"Job's done!"*）
+- 上下文压缩 → Token 限制音效
+- 子 Agent 启动 → 子 Agent 跟踪
 
 ## 远程开发（SSH / Devcontainers / Codespaces）
 

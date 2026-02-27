@@ -2874,23 +2874,44 @@ fi
 # --- Build tab title ---
 TITLE="${MARKER}${PROJECT}: ${STATUS}"
 
-# --- Set tab title via ANSI escape (works in Warp, iTerm2, Terminal.app, etc.) ---
+# --- Resolve TTY for escape sequences ---
 # Write to /dev/tty so the escape sequence reaches the terminal directly.
 # Claude Code captures hook stdout, so plain printf would be swallowed.
+# Inside tmux, /dev/tty may not be available from hook subprocesses;
+# fall back to the tmux pane's TTY in that case.
+_peon_tty=""
+if [ -n "${TMUX:-}" ]; then
+  _peon_tty=$(tmux display-message -p '#{pane_tty}' 2>/dev/null || true)
+fi
+[ -z "$_peon_tty" ] && _peon_tty="/dev/tty"
+
+# Helper: emit an escape sequence, wrapping in DCS passthrough when inside tmux
+# so the host terminal (iTerm2, Ghostty, etc.) receives it through the tmux layer.
+# Requires tmux 3.3a+ with: set -g allow-passthrough on
+_peon_esc() {
+  local seq="$1"
+  if [ -n "${TMUX:-}" ]; then
+    printf '\033Ptmux;\033%s\033\\' "$seq" > "$_peon_tty" 2>/dev/null || true
+  else
+    printf '%s' "$seq" > "$_peon_tty" 2>/dev/null || true
+  fi
+}
+
+# --- Set tab title via ANSI escape (works in Warp, iTerm2, Terminal.app, etc.) ---
 if [ -n "$TITLE" ]; then
-  printf '\033]0;%s\007' "$TITLE" > /dev/tty 2>/dev/null || true
+  _peon_esc "$(printf '\033]0;%s\007' "$TITLE")"
 fi
 
 # --- Set iTerm2 tab color (OSC 6) ---
-# Uses /dev/tty for the same reason as tab title above.
+# Detects iTerm2 via ITERM_SESSION_ID (persists inside tmux where TERM_PROGRAM=tmux).
 # In test mode, write resolved color to file for BATS verification.
 [ "${PEON_TEST:-0}" = "1" ] && [ -n "$TAB_COLOR_RGB" ] && echo "$TAB_COLOR_RGB" > "$PEON_DIR/.tab_color_rgb"
 [ "${PEON_TEST:-0}" = "1" ] && [ -n "$ICON_PATH" ] && echo "$ICON_PATH" > "$PEON_DIR/.icon_path"
-if [ -n "$TAB_COLOR_RGB" ] && [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
+if [ -n "$TAB_COLOR_RGB" ] && { [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]] || [ -n "${ITERM_SESSION_ID:-}" ]; }; then
   read -r _R _G _B <<< "$TAB_COLOR_RGB"
-  printf "\033]6;1;bg;red;brightness;%d\a" "$_R" > /dev/tty 2>/dev/null || true
-  printf "\033]6;1;bg;green;brightness;%d\a" "$_G" > /dev/tty 2>/dev/null || true
-  printf "\033]6;1;bg;blue;brightness;%d\a" "$_B" > /dev/tty 2>/dev/null || true
+  _peon_esc "$(printf '\033]6;1;bg;red;brightness;%d\a' "$_R")"
+  _peon_esc "$(printf '\033]6;1;bg;green;brightness;%d\a' "$_G")"
+  _peon_esc "$(printf '\033]6;1;bg;blue;brightness;%d\a' "$_B")"
 fi
 
 _run_sound_and_notify() {

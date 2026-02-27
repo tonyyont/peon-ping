@@ -510,3 +510,488 @@ Describe "All adapters resolve peon.ps1 via CLAUDE_PEON_DIR" {
         $content | Should -Match '\.claude\\hooks\\peon-ping'
     }
 }
+
+# ============================================================
+# win-play.ps1 audio backend
+# ============================================================
+
+Describe "win-play.ps1 Audio Backend" {
+    BeforeAll {
+        $script:winPlayPath = Join-Path (Join-Path $script:RepoRoot "scripts") "win-play.ps1"
+        $script:winPlayContent = Get-Content $script:winPlayPath -Raw
+    }
+
+    It "has valid PowerShell syntax" {
+        $script:winPlayPath | Should -Exist
+        $errors = $null
+        $null = [System.Management.Automation.PSParser]::Tokenize($script:winPlayContent, [ref]$errors)
+        $errors.Count | Should -Be 0
+    }
+
+    It "requires path and vol parameters" {
+        $script:winPlayContent | Should -Match '\[string\]\$path'
+        $script:winPlayContent | Should -Match '\[double\]\$vol'
+    }
+
+    It "uses SoundPlayer for WAV files" {
+        $script:winPlayContent | Should -Match '\.wav\$'
+        $script:winPlayContent | Should -Match 'System\.Media\.SoundPlayer'
+        $script:winPlayContent | Should -Match 'PlaySync'
+    }
+
+    It "uses MediaPlayer for non-WAV files" {
+        $script:winPlayContent | Should -Match 'System\.Windows\.Media\.MediaPlayer'
+        $script:winPlayContent | Should -Match '\.Play\(\)'
+    }
+
+    It "sets volume on MediaPlayer" {
+        $script:winPlayContent | Should -Match '\$player\.Volume = \$vol'
+    }
+
+    It "disposes SoundPlayer after playback" {
+        $script:winPlayContent | Should -Match '\$sp\.Dispose\(\)'
+    }
+
+    It "closes MediaPlayer after playback" {
+        $script:winPlayContent | Should -Match '\$player\.Close\(\)'
+    }
+
+    It "waits for duration before closing (no premature exit)" {
+        $script:winPlayContent | Should -Match 'NaturalDuration'
+        $script:winPlayContent | Should -Match 'remaining'
+    }
+}
+
+# ============================================================
+# hook-handle-use.ps1 (per-session pack assignment)
+# ============================================================
+
+Describe "hook-handle-use.ps1" {
+    BeforeAll {
+        $script:hhuPath = Join-Path (Join-Path $script:RepoRoot "scripts") "hook-handle-use.ps1"
+        $script:hhuContent = Get-Content $script:hhuPath -Raw
+    }
+
+    It "has valid PowerShell syntax" {
+        $script:hhuPath | Should -Exist
+        $errors = $null
+        $null = [System.Management.Automation.PSParser]::Tokenize($script:hhuContent, [ref]$errors)
+        $errors.Count | Should -Be 0
+    }
+
+    It "sanitizes pack name with safe charset regex" {
+        $script:hhuContent | Should -Match '\$packName -notmatch.*\^.a-zA-Z0-9_-.*\$'
+    }
+
+    It "sanitizes session_id with safe charset regex" {
+        $script:hhuContent | Should -Match '\$sessionId -notmatch.*\^.a-zA-Z0-9_-.*\$'
+    }
+
+    It "outputs JSON response with continue flag" {
+        $script:hhuContent | Should -Match 'ConvertTo-Json'
+        $script:hhuContent | Should -Match 'continue'
+    }
+
+    It "supports CLI mode via positional args" {
+        $script:hhuContent | Should -Match '\$args\.Count'
+        $script:hhuContent | Should -Match 'cliMode'
+    }
+
+    It "reads stdin JSON in hook mode" {
+        $script:hhuContent | Should -Match 'OpenStandardInput'
+        $script:hhuContent | Should -Match 'StreamReader'
+    }
+
+    It "validates pack directory exists before assignment" {
+        $script:hhuContent | Should -Match 'Test-Path \$packPath'
+    }
+
+    It "sets pack_rotation_mode to agentskill" {
+        $script:hhuContent | Should -Match 'pack_rotation_mode.*agentskill'
+    }
+
+    It "writes session_packs with timestamp to .state.json" {
+        $script:hhuContent | Should -Match 'session_packs'
+        $script:hhuContent | Should -Match 'last_used'
+    }
+
+    It "blocks LLM invocation on successful match (continue=false)" {
+        $script:hhuContent | Should -Match 'Write-Response -Continue \$false -Message "Voice set to'
+    }
+
+    It "passes through unrelated prompts (continue=true)" {
+        $script:hhuContent | Should -Match 'Write-Response -Continue \$true'
+    }
+}
+
+# ============================================================
+# uninstall.ps1
+# ============================================================
+
+Describe "uninstall.ps1" {
+    BeforeAll {
+        $script:uninstallPath = Join-Path $script:RepoRoot "uninstall.ps1"
+        $script:uninstallContent = Get-Content $script:uninstallPath -Raw
+    }
+
+    It "has valid PowerShell syntax" {
+        $script:uninstallPath | Should -Exist
+        $errors = $null
+        $null = [System.Management.Automation.PSParser]::Tokenize($script:uninstallContent, [ref]$errors)
+        $errors.Count | Should -Be 0
+    }
+
+    It "has KeepSounds parameter" {
+        $script:uninstallContent | Should -Match '\[switch\]\$KeepSounds'
+    }
+
+    It "has Force parameter" {
+        $script:uninstallContent | Should -Match '\[switch\]\$Force'
+    }
+
+    It "removes hooks from settings.json" {
+        $script:uninstallContent | Should -Match 'settings\.json'
+        $script:uninstallContent | Should -Match 'peon\.ps1.*peon\.sh.*notify\.sh.*hook-handle-use'
+    }
+
+    It "removes skills" {
+        $script:uninstallContent | Should -Match 'peon-ping-toggle.*peon-ping-config.*peon-ping-use'
+    }
+
+    It "removes CLI command (peon.cmd)" {
+        $script:uninstallContent | Should -Match 'peon\.cmd'
+    }
+
+    It "preserves packs directory when KeepSounds is set" {
+        $script:uninstallContent | Should -Match '\$_.Name -ne "packs"'
+    }
+
+    It "cleans up Cursor hooks" {
+        $script:uninstallContent | Should -Match 'hooks\.json'
+        $script:uninstallContent | Should -Match 'hook-handle-use'
+    }
+
+    It "does not use ExecutionPolicy Bypass" {
+        $script:uninstallContent | Should -Not -Match 'ExecutionPolicy Bypass'
+    }
+}
+
+# ============================================================
+# Embedded peon.ps1 hook script (inside install.ps1)
+# Mirrors BATS test coverage for peon.sh event handling
+# ============================================================
+
+Describe "Embedded peon.ps1 Hook Script" {
+    BeforeAll {
+        # Extract the embedded peon.ps1 from install.ps1 (between @' and '@)
+        $script:installContent = Get-Content (Join-Path $script:RepoRoot "install.ps1") -Raw
+        if ($script:installContent -match "(?s)\`$hookScript = @'(.+?)'@") {
+            $script:peonHookContent = $matches[1]
+        } else {
+            $script:peonHookContent = ""
+        }
+    }
+
+    It "embedded hook script is extractable" {
+        $script:peonHookContent | Should -Not -BeNullOrEmpty
+    }
+
+    It "has valid PowerShell syntax" {
+        $errors = $null
+        $null = [System.Management.Automation.PSParser]::Tokenize($script:peonHookContent, [ref]$errors)
+        $errors.Count | Should -Be 0
+    }
+
+    # --- Event Routing (mirrors BATS: SessionStart/Stop/Notification/PermissionRequest) ---
+
+    It "maps SessionStart to session.start category" {
+        $script:peonHookContent | Should -Match '"SessionStart"\s*\{[^}]*\$category = "session\.start"'
+    }
+
+    It "maps Stop to task.complete category" {
+        $script:peonHookContent | Should -Match '"Stop"\s*\{[^}]*\$category = "task\.complete"'
+    }
+
+    It "maps PermissionRequest to input.required category" {
+        $script:peonHookContent | Should -Match '"PermissionRequest"\s*\{[^}]*\$category = "input\.required"'
+    }
+
+    It "maps PostToolUseFailure to task.error category" {
+        $script:peonHookContent | Should -Match '"PostToolUseFailure"\s*\{[^}]*\$category = "task\.error"'
+    }
+
+    It "maps SubagentStart to task.acknowledge category" {
+        $script:peonHookContent | Should -Match '"SubagentStart"\s*\{[^}]*\$category = "task\.acknowledge"'
+    }
+
+    # --- Cursor Event Remapping ---
+
+    It "remaps Cursor camelCase events to PascalCase" {
+        $script:peonHookContent | Should -Match '"sessionStart"\s*=\s*"SessionStart"'
+        $script:peonHookContent | Should -Match '"stop"\s*=\s*"Stop"'
+        $script:peonHookContent | Should -Match '"beforeSubmitPrompt"\s*=\s*"UserPromptSubmit"'
+    }
+
+    It "remaps subagentStart to SubagentStart" {
+        $script:peonHookContent | Should -Match '"subagentStart"\s*=\s*"SubagentStart"'
+    }
+
+    It "remaps preCompact to PreCompact" {
+        $script:peonHookContent | Should -Match '"preCompact"\s*=\s*"PreCompact"'
+    }
+
+    # --- Stop Debounce (mirrors BATS: rapid Stop events are debounced) ---
+
+    It "debounces rapid Stop events with 5s cooldown" {
+        $script:peonHookContent | Should -Match 'last_stop_time'
+        $script:peonHookContent | Should -Match '-lt 5'
+    }
+
+    # --- Annoyed Easter Egg (mirrors BATS: annoyed triggers after rapid prompts) ---
+
+    It "detects rapid UserPromptSubmit for annoyed easter egg" {
+        $script:peonHookContent | Should -Match '"UserPromptSubmit"\s*\{'
+        $script:peonHookContent | Should -Match 'annoyedThreshold'
+        $script:peonHookContent | Should -Match 'annoyedWindow'
+    }
+
+    It "maps annoyed to user.spam category" {
+        $script:peonHookContent | Should -Match '\$category = "user\.spam"'
+    }
+
+    It "tracks prompt timestamps per session" {
+        $script:peonHookContent | Should -Match 'prompt_timestamps'
+        $script:peonHookContent | Should -Match '\$sessionId'
+    }
+
+    # --- Config: enabled/disabled (mirrors BATS: enabled=false skips everything) ---
+
+    It "exits early when config enabled is false" {
+        $script:peonHookContent | Should -Match '-not \$config\.enabled.*exit 0'
+    }
+
+    # --- Category toggle (mirrors BATS: category disabled skips sound) ---
+
+    It "checks if category is enabled before playing sound" {
+        $script:peonHookContent | Should -Match '\$catEnabled.*-eq \$false.*exit 0'
+    }
+
+    # --- Sound Selection: No-Repeat (mirrors BATS: sound picker avoids immediate repeats) ---
+
+    It "implements no-repeat logic for sound selection" {
+        $script:peonHookContent | Should -Match 'lastPlayed'
+        $script:peonHookContent | Should -Match '-ne \$lastPlayed'
+    }
+
+    It "persists last played sound to state" {
+        $script:peonHookContent | Should -Match '\$state\[\$lastKey\] = \$soundFile'
+    }
+
+    It "falls back to all candidates when filtering leaves none" {
+        $script:peonHookContent | Should -Match '\$candidates\.Count -eq 0.*\$candidates = @\(\$catSounds\)'
+    }
+
+    # --- Icon Resolution Chain (mirrors BATS: CESP §5.5 icon tests) ---
+
+    It "resolves sound-level icon first" {
+        $script:peonHookContent | Should -Match '\$chosen\.icon'
+    }
+
+    It "resolves category-level icon second" {
+        $script:peonHookContent | Should -Match '\$manifest\.categories\.\$category\.icon'
+    }
+
+    It "resolves pack-level icon third" {
+        $script:peonHookContent | Should -Match '\$manifest\.icon'
+    }
+
+    It "falls back to icon.png at pack root" {
+        $script:peonHookContent | Should -Match 'icon\.png'
+    }
+
+    It "blocks path traversal in icon resolution" {
+        $script:peonHookContent | Should -Match 'StartsWith\(\$packRoot\)'
+    }
+
+    # --- Pack Rotation / Session Override (mirrors BATS: session_override mode) ---
+
+    It "supports agentskill / session_override rotation mode" {
+        $script:peonHookContent | Should -Match 'agentskill.*session_override'
+    }
+
+    It "looks up session-specific pack from session_packs state" {
+        $script:peonHookContent | Should -Match 'session_packs'
+        $script:peonHookContent | Should -Match 'sessionId'
+    }
+
+    It "defaults to active_pack when no session assignment" {
+        $script:peonHookContent | Should -Match '\$activePack = \$config\.active_pack'
+    }
+
+    It "falls back to peon when no active_pack configured" {
+        $script:peonHookContent | Should -Match '\$activePack.*"peon"'
+    }
+
+    # --- Volume (mirrors BATS: volume from config is passed to playback) ---
+
+    It "reads volume from config" {
+        $script:peonHookContent | Should -Match '\$volume = \$config\.volume'
+    }
+
+    It "defaults volume to 0.5" {
+        $script:peonHookContent | Should -Match '\$volume.*0\.5'
+    }
+
+    # --- Audio Playback (mirrors BATS: platform-specific audio) ---
+
+    It "uses SoundPlayer for WAV files inline" {
+        $script:peonHookContent | Should -Match 'System\.Media\.SoundPlayer'
+        $script:peonHookContent | Should -Match '\.wav\$'
+    }
+
+    It "uses MediaPlayer for non-WAV files inline" {
+        $script:peonHookContent | Should -Match 'System\.Windows\.Media\.MediaPlayer'
+    }
+
+    # --- CLI Commands (mirrors BATS: peon --toggle/--pause/--resume/--status) ---
+
+    It "supports --toggle CLI command" {
+        $script:peonHookContent | Should -Match '--toggle'
+        $script:peonHookContent | Should -Match '-not \$cfg\.enabled'
+    }
+
+    It "supports --pause CLI command" {
+        $script:peonHookContent | Should -Match '--pause'
+        $script:peonHookContent | Should -Match '"enabled": false'
+    }
+
+    It "supports --resume CLI command" {
+        $script:peonHookContent | Should -Match '--resume'
+        $script:peonHookContent | Should -Match '"enabled": true'
+    }
+
+    It "supports --status CLI command" {
+        $script:peonHookContent | Should -Match '--status'
+        $script:peonHookContent | Should -Match 'ENABLED'
+        $script:peonHookContent | Should -Match 'PAUSED'
+    }
+
+    It "supports --packs CLI command with use/next/list subcommands" {
+        $script:peonHookContent | Should -Match '--packs'
+        $script:peonHookContent | Should -Match '"use"'
+        $script:peonHookContent | Should -Match '"next"'
+    }
+
+    It "supports --volume CLI command with clamping" {
+        $script:peonHookContent | Should -Match '--volume'
+        $script:peonHookContent | Should -Match 'Max.*0\.0.*Min.*1\.0'
+    }
+
+    It "supports --help CLI command" {
+        $script:peonHookContent | Should -Match '--help'
+    }
+
+    # --- State Persistence ---
+
+    It "reads and writes .state.json" {
+        $script:peonHookContent | Should -Match '\.state\.json'
+        $script:peonHookContent | Should -Match 'ConvertTo-Json.*Set-Content \$StatePath'
+    }
+
+    It "reads stdin JSON via StreamReader (UTF-8 BOM-safe)" {
+        $script:peonHookContent | Should -Match 'OpenStandardInput'
+        $script:peonHookContent | Should -Match 'StreamReader'
+        $script:peonHookContent | Should -Match 'UTF8'
+    }
+
+    # --- Session Cleanup ---
+
+    It "expires old sessions based on TTL" {
+        $script:peonHookContent | Should -Match 'session_ttl_days'
+        $script:peonHookContent | Should -Match 'cutoff'
+    }
+
+    It "converts PSCustomObject to hashtable for PS 5.1 compat" {
+        $script:peonHookContent | Should -Match 'ConvertTo-Hashtable'
+    }
+}
+
+# ============================================================
+# install.ps1 embedded hook: config defaults
+# (mirrors BATS: default config creation tests)
+# ============================================================
+
+Describe "install.ps1 Default Config" {
+    BeforeAll {
+        $script:installContent = Get-Content (Join-Path $script:RepoRoot "install.ps1") -Raw
+    }
+
+    It "sets default volume to 0.5" {
+        $script:installContent | Should -Match 'volume = 0\.5'
+    }
+
+    It "enables all CESP categories by default" {
+        $script:installContent | Should -Match '"session\.start" = \$true'
+        $script:installContent | Should -Match '"task\.complete" = \$true'
+        $script:installContent | Should -Match '"task\.error" = \$true'
+        $script:installContent | Should -Match '"input\.required" = \$true'
+        $script:installContent | Should -Match '"resource\.limit" = \$true'
+        $script:installContent | Should -Match '"user\.spam" = \$true'
+    }
+
+    It "sets annoyed threshold to 3 with 10s window" {
+        $script:installContent | Should -Match 'annoyed_threshold = 3'
+        $script:installContent | Should -Match 'annoyed_window_seconds = 10'
+    }
+
+    It "sets silent_window_seconds to 0 (disabled)" {
+        $script:installContent | Should -Match 'silent_window_seconds = 0'
+    }
+
+    It "registers all 8 hook events" {
+        $script:installContent | Should -Match '"SessionStart".*"SessionEnd".*"SubagentStart".*"Stop".*"Notification".*"PermissionRequest".*"PostToolUseFailure".*"PreCompact"'
+    }
+
+    It "uses invariant culture for JSON serialization (locale safety)" {
+        $script:installContent | Should -Match 'InvariantCulture'
+    }
+
+    It "repairs locale-damaged volume decimals (e.g. 0,5 -> 0.5)" {
+        $script:installContent | Should -Match 'Get-PeonConfigRaw'
+        $script:installContent | Should -Match '\\d\),\(\\d'
+    }
+
+    It "installs skills" {
+        $script:installContent | Should -Match 'peon-ping-toggle'
+        $script:installContent | Should -Match 'peon-ping-config'
+        $script:installContent | Should -Match 'peon-ping-use'
+        $script:installContent | Should -Match 'peon-ping-log'
+    }
+
+    It "installs trainer voice packs" {
+        $script:installContent | Should -Match 'trainer.*manifest\.json'
+    }
+
+    It "creates CLI wrappers for both cmd and bash" {
+        $script:installContent | Should -Match 'peon\.cmd'
+        $script:installContent | Should -Match '#!/usr/bin/env bash'
+    }
+
+    It "validates pack names with safe charset" {
+        $script:installContent | Should -Match 'Test-SafePackName'
+    }
+
+    It "validates source repo, ref, and path" {
+        $script:installContent | Should -Match 'Test-SafeSourceRepo'
+        $script:installContent | Should -Match 'Test-SafeSourceRef'
+        $script:installContent | Should -Match 'Test-SafeSourcePath'
+    }
+
+    It "validates sound filenames" {
+        $script:installContent | Should -Match 'Test-SafeFilename'
+    }
+
+    It "blocks path traversal in source ref and path" {
+        $script:installContent | Should -Match '\.\.'
+    }
+}

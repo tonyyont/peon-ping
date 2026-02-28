@@ -10,7 +10,8 @@ function run(argv) {
   var color    = argv[1] || 'blue';
   var iconPath = argv[2] || '';   // kept for compat with notify.sh (unused)
   var slot     = parseInt(argv[3], 10) || 0;
-  var dismiss  = parseFloat(argv[4]) || 5;
+  var dismiss  = argv[4] !== undefined ? parseFloat(argv[4]) : 5;
+  if (isNaN(dismiss)) dismiss = 5;
   var bundleId   = argv[5] || '';
   var idePid     = parseInt(argv[6], 10) || 0;
   var sessionTty = argv[7] || '';  // TTY of the Claude session (for window focus)
@@ -450,53 +451,55 @@ function run(argv) {
   win.orderFrontRegardless;
   win.animator.setAlphaValue(1.0);
 
-  var animSteps = 120, animInterval = dismiss / animSteps;
-  var step = { val: 0 };
+  if (dismiss > 0) {
+    var animSteps = 120, animInterval = dismiss / animSteps;
+    var step = { val: 0 };
 
-  ObjC.registerSubclass({
-    name: 'SakuraAnimator', superclass: 'NSObject',
-    methods: { 'tick:': { types: ['void', ['id']], implementation: function(timer) {
-      step.val++;
-      var p = Math.min(step.val / animSteps, 1.0);
-      var t = step.val * animInterval;
+    ObjC.registerSubclass({
+      name: 'SakuraAnimator', superclass: 'NSObject',
+      methods: { 'tick:': { types: ['void', ['id']], implementation: function(timer) {
+        step.val++;
+        var p = Math.min(step.val / animSteps, 1.0);
+        var t = step.val * animInterval;
 
-      // Update cherry blossom petals
-      for (var pi = 0; pi < petals.length; pi++) {
-        var pt = petals[pi];
-        pt.x += pt.vx + Math.sin(t * pt.wobbleFreq + pt.wobblePhase) * pt.wobbleAmp;
-        pt.y += pt.vy;
-        pt.rot += pt.rotSpeed;
-        // Wrap: if petal exits bottom or left, reset to top-right
-        if (pt.y < -10 || pt.x < -20) {
-          pt.x = contentW + Math.random() * 20;
-          pt.y = contentH + Math.random() * 20;
+        // Update cherry blossom petals
+        for (var pi = 0; pi < petals.length; pi++) {
+          var pt = petals[pi];
+          pt.x += pt.vx + Math.sin(t * pt.wobbleFreq + pt.wobblePhase) * pt.wobbleAmp;
+          pt.y += pt.vy;
+          pt.rot += pt.rotSpeed;
+          // Wrap: if petal exits bottom or left, reset to top-right
+          if (pt.y < -10 || pt.x < -20) {
+            pt.x = contentW + Math.random() * 20;
+            pt.y = contentH + Math.random() * 20;
+          }
+          // Recreate path at new position (fallback: no CGAffineTransform)
+          var pp = $.CGPathCreateMutable();
+          $.CGPathAddEllipseInRect(pp, null, $.CGRectMake(pt.x - 2, pt.y - 3, 4, 6));
+          pt.layer.setPath(pp);
+          pt.layer.setOpacity(pt.opacity * (0.7 + 0.3 * Math.sin(t * 2 + pt.wobblePhase)));
         }
-        // Recreate path at new position (fallback: no CGAffineTransform)
-        var pp = $.CGPathCreateMutable();
-        $.CGPathAddEllipseInRect(pp, null, $.CGRectMake(pt.x - 2, pt.y - 3, 4, 6));
-        pt.layer.setPath(pp);
-        pt.layer.setOpacity(pt.opacity * (0.7 + 0.3 * Math.sin(t * 2 + pt.wobblePhase)));
-      }
 
-      // Progress line
-      progressLine.setStrokeEnd(p);
+        // Progress line
+        progressLine.setStrokeEnd(p);
 
-      // Progress complete — hide window (terminate handled by separate timer)
-      if (step.val >= animSteps) {
-        timer.invalidate();
-        win.setAlphaValue(0.0);
-        win.orderOut(null);
-      }
-    }}}
-  });
+        // Progress complete — hide window (terminate handled by separate timer)
+        if (step.val >= animSteps) {
+          timer.invalidate();
+          win.setAlphaValue(0.0);
+          win.orderOut(null);
+        }
+      }}}
+    });
 
-  var anim = $.SakuraAnimator.alloc.init;
-  $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
-    animInterval, anim, 'tick:', null, true);
+    var anim = $.SakuraAnimator.alloc.init;
+    $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
+      animInterval, anim, 'tick:', null, true);
 
-  // Hard terminate after dismiss time (independent timer — works reliably)
-  $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
-    dismiss + 0.3, $.NSApp, 'terminate:', null, false);
+    // Hard terminate after dismiss time (independent timer — works reliably)
+    $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
+      dismiss + 0.3, $.NSApp, 'terminate:', null, false);
+  }
 
   $.NSApp.run;
 }

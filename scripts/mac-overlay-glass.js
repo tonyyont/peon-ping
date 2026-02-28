@@ -10,7 +10,8 @@ function run(argv) {
   var color    = argv[1] || 'blue';
   var iconPath = argv[2] || '';   // kept for compat with notify.sh (unused)
   var slot     = parseInt(argv[3], 10) || 0;
-  var dismiss  = parseFloat(argv[4]) || 5;
+  var dismiss  = argv[4] !== undefined ? parseFloat(argv[4]) : 5;
+  if (isNaN(dismiss)) dismiss = 5;
   var bundleId   = argv[5] || '';
   var idePid     = parseInt(argv[6], 10) || 0;
   var sessionTty = argv[7] || '';  // TTY of the Claude session (for window focus)
@@ -265,40 +266,42 @@ function run(argv) {
   win.orderFrontRegardless;
   win.animator.setAlphaValue(1.0);
 
-  var animSteps = 120, animInterval = dismiss / animSteps;
-  var step = { val: 0 };
+  if (dismiss > 0) {
+    var animSteps = 120, animInterval = dismiss / animSteps;
+    var step = { val: 0 };
 
-  ObjC.registerSubclass({
-    name: 'GlassAnimator', superclass: 'NSObject',
-    methods: { 'tick:': { types: ['void', ['id']], implementation: function(timer) {
-      step.val++;
-      var p = Math.min(step.val / animSteps, 1.0);
+    ObjC.registerSubclass({
+      name: 'GlassAnimator', superclass: 'NSObject',
+      methods: { 'tick:': { types: ['void', ['id']], implementation: function(timer) {
+        step.val++;
+        var p = Math.min(step.val / animSteps, 1.0);
 
-      // Progress line
-      progressLine.setStrokeEnd(p);
+        // Progress line
+        progressLine.setStrokeEnd(p);
 
-      // Fade out in last 15%
-      if (p > 0.85) {
-        var fadeP = (p - 0.85) / 0.15;
-        win.setAlphaValue(0.99 - fadeP * 0.99);
-      }
+        // Fade out in last 15%
+        if (p > 0.85) {
+          var fadeP = (p - 0.85) / 0.15;
+          win.setAlphaValue(0.99 - fadeP * 0.99);
+        }
 
-      // Progress complete — hide window
-      if (step.val >= animSteps) {
-        timer.invalidate();
-        win.setAlphaValue(0.0);
-        win.orderOut(null);
-      }
-    }}}
-  });
+        // Progress complete — hide window
+        if (step.val >= animSteps) {
+          timer.invalidate();
+          win.setAlphaValue(0.0);
+          win.orderOut(null);
+        }
+      }}}
+    });
 
-  var anim = $.GlassAnimator.alloc.init;
-  $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
-    animInterval, anim, 'tick:', null, true);
+    var anim = $.GlassAnimator.alloc.init;
+    $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
+      animInterval, anim, 'tick:', null, true);
 
-  // Hard terminate after dismiss time (independent timer — works reliably)
-  $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
-    dismiss + 0.3, $.NSApp, 'terminate:', null, false);
+    // Hard terminate after dismiss time (independent timer — works reliably)
+    $.NSTimer.scheduledTimerWithTimeIntervalTargetSelectorUserInfoRepeats(
+      dismiss + 0.3, $.NSApp, 'terminate:', null, false);
+  }
 
   $.NSApp.run;
 }

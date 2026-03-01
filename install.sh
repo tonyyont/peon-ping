@@ -396,6 +396,7 @@ else
   curl -fsSL "$REPO_BASE/adapters/windsurf.sh" -o "$INSTALL_DIR/adapters/windsurf.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/rovodev.sh" -o "$INSTALL_DIR/adapters/rovodev.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/adapters/kimi.sh" -o "$INSTALL_DIR/adapters/kimi.sh" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/adapters/deepagents.sh" -o "$INSTALL_DIR/adapters/deepagents.sh" 2>/dev/null || true
   mkdir -p "$INSTALL_DIR/scripts"
   curl -fsSL "$REPO_BASE/scripts/hook-handle-use.sh" -o "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/hook-handle-use.ps1" -o "$INSTALL_DIR/scripts/hook-handle-use.ps1" 2>/dev/null || true
@@ -1168,6 +1169,52 @@ if [ -d "$KIMI_DIR" ]; then
   echo ""
   echo "Detected Kimi Code CLI installation, starting adapter..."
   bash "$INSTALL_DIR/adapters/kimi.sh" --install
+fi
+
+# --- Auto-detect deepagents-cli and register hooks ---
+DEEPAGENTS_DIR="$HOME/.deepagents"
+DEEPAGENTS_HOOKS_FILE="$DEEPAGENTS_DIR/hooks.json"
+
+if [ -d "$DEEPAGENTS_DIR" ]; then
+  echo ""
+  echo "Detected deepagents-cli installation, registering hooks..."
+
+  python3 -c "
+import json, os
+
+hooks_file = '$(py_path "$DEEPAGENTS_HOOKS_FILE")'
+adapter_cmd = '$(py_path "$INSTALL_DIR/adapters/deepagents.sh")'
+
+# Load or create hooks.json
+if os.path.exists(hooks_file):
+    with open(hooks_file) as f:
+        data = json.load(f)
+else:
+    data = {}
+
+if 'hooks' not in data:
+    data['hooks'] = []
+
+# Remove existing peon-ping entries
+data['hooks'] = [
+    h for h in data['hooks']
+    if not any('peon-ping' in str(c) for c in (h.get('command') or []))
+]
+
+# Add new entry
+data['hooks'].append({
+    'command': ['bash', adapter_cmd],
+    'events': ['session.start', 'session.end', 'task.complete', 'input.required', 'task.error', 'tool.error', 'user.prompt', 'permission.request', 'compact']
+})
+
+os.makedirs(os.path.dirname(hooks_file), exist_ok=True)
+with open(hooks_file, 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+
+events = ['session.start', 'session.end', 'task.complete', 'input.required', 'task.error', 'tool.error', 'user.prompt', 'permission.request', 'compact']
+print('  Hooks registered for: ' + ', '.join(events))
+"
 fi
 
 # --- Remove peon-ping hooks from project-level settings to prevent doubles ---

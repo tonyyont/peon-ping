@@ -837,7 +837,7 @@ New-Item -ItemType Directory -Path $adaptersDir -Force | Out-Null
 $adapterFiles = @(
     "codex.ps1", "gemini.ps1", "copilot.ps1", "windsurf.ps1",
     "kiro.ps1", "openclaw.ps1", "amp.ps1", "antigravity.ps1",
-    "kimi.ps1", "opencode.ps1", "kilo.ps1"
+    "kimi.ps1", "opencode.ps1", "kilo.ps1", "deepagents.ps1"
 )
 
 $sourceAdaptersDir = Join-Path $ScriptDir "adapters"
@@ -1096,6 +1096,48 @@ if (Test-Path $CursorDir) {
     
     $cursorData | ConvertTo-Json -Depth 10 | Set-Content $CursorHooksFile -Encoding UTF8
     Write-Host "  Cursor beforeSubmitPrompt hook registered" -ForegroundColor Green
+}
+
+# --- Auto-detect deepagents-cli and register hooks ---
+$DeepagentsDir = Join-Path $env:USERPROFILE ".deepagents"
+$DeepagentsHooksFile = Join-Path $DeepagentsDir "hooks.json"
+
+if (Test-Path $DeepagentsDir) {
+    Write-Host ""
+    Write-Host "Detected deepagents-cli installation, registering hooks..."
+
+    $adapterPath = Join-Path $InstallDir "adapters" "deepagents.ps1"
+
+    # Load or create hooks.json
+    if (Test-Path $DeepagentsHooksFile) {
+        $daData = Get-Content $DeepagentsHooksFile -Raw | ConvertFrom-Json
+    } else {
+        $daData = [PSCustomObject]@{ hooks = @() }
+    }
+
+    if (-not $daData.hooks) {
+        $daData | Add-Member -NotePropertyName "hooks" -NotePropertyValue @() -Force
+    }
+
+    # Remove existing peon-ping entries
+    $daData.hooks = @($daData.hooks | Where-Object {
+        $cmd = $_.command
+        -not ($cmd -and ($cmd -join " ") -match "peon-ping")
+    })
+
+    # Add new entry
+    $newHook = [PSCustomObject]@{
+        command = @("powershell", "-NoProfile", "-File", $adapterPath)
+        events  = @("session.start", "session.end", "task.complete", "input.required", "task.error", "tool.error", "user.prompt", "permission.request", "compact")
+    }
+    $daData.hooks = @($daData.hooks) + @($newHook)
+
+    # Ensure directory exists
+    New-Item -ItemType Directory -Path $DeepagentsDir -Force | Out-Null
+
+    $daData | ConvertTo-Json -Depth 10 | Set-Content $DeepagentsHooksFile -Encoding UTF8
+    $daEvents = @("session.start", "session.end", "task.complete", "input.required", "task.error", "tool.error", "user.prompt", "permission.request", "compact")
+    Write-Host "  Hooks registered for: $($daEvents -join ', ')" -ForegroundColor Green
 }
 
 # --- Install skills ---

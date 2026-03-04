@@ -398,6 +398,7 @@ else
   mkdir -p "$INSTALL_DIR/scripts"
   curl -fsSL "$REPO_BASE/scripts/hook-handle-use.sh" -o "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/hook-handle-use.ps1" -o "$INSTALL_DIR/scripts/hook-handle-use.ps1" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/scripts/hook-handle-rename.sh" -o "$INSTALL_DIR/scripts/hook-handle-rename.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/pack-download.sh" -o "$INSTALL_DIR/scripts/pack-download.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/mac-overlay.js" -o "$INSTALL_DIR/scripts/mac-overlay.js" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/notify.sh" -o "$INSTALL_DIR/scripts/notify.sh" 2>/dev/null || true
@@ -478,6 +479,7 @@ fi
 chmod +x "$INSTALL_DIR/peon.sh"
 chmod +x "$INSTALL_DIR/relay.sh"
 chmod +x "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
+chmod +x "$INSTALL_DIR/scripts/hook-handle-rename.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/scripts/pack-download.sh" 2>/dev/null || true
 chmod +x "$INSTALL_DIR/scripts/notify.sh" 2>/dev/null || true
 
@@ -838,15 +840,17 @@ with open(settings_path, 'w') as f:
 print('Hooks registered for: ' + ', '.join(events))
 "
 
-# Register UserPromptSubmit hook for /peon-ping-use command
+# Register UserPromptSubmit hooks for /peon-ping-use and /peon-ping-rename commands
 # (Claude Code uses UserPromptSubmit; Cursor uses beforeSubmitPrompt — see below)
 BEFORE_SUBMIT_HOOK="$GLOBAL_BASE/hooks/peon-ping/scripts/hook-handle-use.sh"
+RENAME_HOOK="$GLOBAL_BASE/hooks/peon-ping/scripts/hook-handle-rename.sh"
 
 python3 -c "
 import json, os, sys
 
 settings_path = '$(py_path "$HOOK_SETTINGS")'
 hook_cmd = '$(py_path "$BEFORE_SUBMIT_HOOK")'
+rename_cmd = '$(py_path "$RENAME_HOOK")'
 
 # Load existing settings
 if os.path.exists(settings_path):
@@ -858,36 +862,35 @@ else:
 hooks = settings.setdefault('hooks', {})
 
 # Preserve existing command path if it resolves to the installed file
-installed = os.path.realpath(hook_cmd)
+installed_use = os.path.realpath(hook_cmd)
+installed_rename = os.path.realpath(rename_cmd)
 for entries in hooks.values():
     for entry in entries:
         for hk in entry.get('hooks', []):
             cmd = hk.get('command', '')
             if 'peon-ping/' in cmd and '/hook-handle-use' in cmd:
-                resolved = os.path.realpath(os.path.expanduser(cmd))
-                if resolved == installed:
+                if os.path.realpath(os.path.expanduser(cmd)) == installed_use:
                     hook_cmd = cmd
-                break
+            if 'peon-ping/' in cmd and '/hook-handle-rename' in cmd:
+                if os.path.realpath(os.path.expanduser(cmd)) == installed_rename:
+                    rename_cmd = cmd
 
-# Create UserPromptSubmit hook entry for /peon-ping-use handler
-before_submit_hook = {
-    'type': 'command',
-    'command': hook_cmd,
-    'timeout': 5
-}
-
+# Create UserPromptSubmit hook entries for command handlers
 before_submit_entry = {
     'matcher': '',
-    'hooks': [before_submit_hook]
+    'hooks': [
+        {'type': 'command', 'command': hook_cmd, 'timeout': 5},
+        {'type': 'command', 'command': rename_cmd, 'timeout': 5},
+    ]
 }
 
 # Register under UserPromptSubmit (valid Claude Code event)
 event_hooks = hooks.get('UserPromptSubmit', [])
-# Remove any existing hook-handle-use entries (keep peon.sh entries)
+# Remove any existing hook-handle-use/rename entries (keep peon.sh entries)
 event_hooks = [
     h for h in event_hooks
     if not any(
-        'hook-handle-use' in hk.get('command', '')
+        'hook-handle-use' in hk.get('command', '') or 'hook-handle-rename' in hk.get('command', '')
         for hk in h.get('hooks', [])
     )
 ]
@@ -904,7 +907,7 @@ with open(settings_path, 'w') as f:
     json.dump(settings, f, indent=2)
     f.write('\n')
 
-print('UserPromptSubmit hook registered for /peon-ping-use command')
+print('UserPromptSubmit hooks registered for /peon-ping-use and /peon-ping-rename commands')
 "
 
 # Register beforeSubmitPrompt hook for Cursor IDE if ~/.cursor exists

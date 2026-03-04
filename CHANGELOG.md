@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.13.0 (2026-03-03)
+
+### Added
+- **`/peon-ping-rename` skill** — give the current Claude Code session a custom name shown in desktop notification titles and terminal tab title. Zero tokens consumed (intercepted by `UserPromptSubmit` hook). Names stored in `.state.json` keyed by session ID — multiple tabs in the same repo each get independent names. `/peon-ping-rename` with no argument resets to auto-detect.
+- **`CLAUDE_SESSION_NAME` env var** — set before launching `claude` to give a session a fixed name at the environment level. Shows in both notification titles and terminal tab titles.
+- **`notification_title_script` config key** — shell command run at event time to compute the project name dynamically. Receives `PEON_SESSION_ID`, `PEON_CWD`, `PEON_HOOK_EVENT`, `PEON_SESSION_NAME` env vars; stdout used as project name (max 50 chars).
+- **Updated priority chain**: `/peon-ping-rename` > `CLAUDE_SESSION_NAME` > `.peon-label` > `notification_title_script` > `project_name_map` > `notification_title_override` > git repo name > folder name.
+
+### Fixed
+- `.peon-label` tier now correctly guarded with `if not project:` — was previously overwriting higher-priority tiers.
+
 ## v2.12.1 (2026-03-02)
 
 ### Fixed

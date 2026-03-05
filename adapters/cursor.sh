@@ -18,7 +18,26 @@
 
 set -euo pipefail
 
-PEON_DIR="${CLAUDE_PEON_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping}"
+# Resolve PEON_DIR: check candidate locations in order, verify peon.sh exists in each.
+_resolve_peon_dir() {
+  local candidates=(
+    "${PEON_DIR:-}"
+    "${CLAUDE_PEON_DIR:-}"
+    "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping"
+    "$HOME/.openpeon"
+  )
+  for dir in "${candidates[@]}"; do
+    if [ -n "$dir" ] && [ -f "$dir/peon.sh" ]; then
+      echo "$dir"
+      return
+    fi
+  done
+  echo "[peon-ping/cursor] ERROR: peon.sh not found in any candidate directory" >&2
+  echo "[peon-ping/cursor] Tried: PEON_DIR, CLAUDE_PEON_DIR, ${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/peon-ping, $HOME/.openpeon" >&2
+  exit 1
+}
+
+PEON_DIR="$(_resolve_peon_dir)"
 
 CURSOR_EVENT="${1:-stop}"
 

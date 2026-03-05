@@ -5,6 +5,15 @@ with lib;
 let
   cfg = config.programs.peon-ping;
   jsonFormat = pkgs.formats.json { };
+
+  ogPacksVersion = "1.4.0";
+
+  # Fetch the og-packs repository
+  ogPacksSrc = pkgs.fetchzip {
+    url = "https://github.com/PeonPing/og-packs/archive/refs/tags/v${ogPacksVersion}.tar.gz";
+    sha256 = "sha256-jkybxNrXfc8GFPAi0Lb1rF8fsx8Z8K0k5gQxh8Y62Ds=";
+    stripRoot = false;
+  };
 in
 {
   options.programs.peon-ping = {
@@ -54,8 +63,7 @@ in
       type = types.listOf types.str;
       default = [ ];
       description = ''
-        List of sound pack names to install automatically.
-        These will be downloaded from the OpenPeon registry.
+        List of sound pack names to install automatically - fetched from the og-packs repository.
         Common packs: peon, glados, sc_kerrigan, murloc, witcher
       '';
       example = literalExpression ''[ "peon" "glados" ]'';
@@ -79,17 +87,41 @@ in
   };
 
   config = mkIf cfg.enable {
-    home.packages = [ cfg.package ];
+    # Install base files from share into ~/.openpeon, excluding peon.sh which is wrapped by bin/peon.sh
+    home.file.".openpeon" = {
+      source = pkgs.runCommand "peon-home-files" {} ''
+        cp -r ${cfg.package}/share/peon-ping $out
+        chmod -R u+w $out
+        rm -f $out/peon.sh
+      '';
+      recursive = true;
+    };
 
-    # Create the config file at the legacy location peon-ping expects
+    # PEON_DIR points at ~/.openpeon where all runtime files live.
+    home.sessionVariables.PEON_DIR = "${config.home.homeDirectory}/.openpeon";
+
+    # peon.sh in ~/.openpeon is the bin/peon wrapper (has runtime PATH baked in).
+    home.file.".openpeon/peon.sh".source = "${cfg.package}/bin/peon";
+
+    # Create the config file at the location peon-ping expects.
+    # Overrides any config.json that may be present in the package.
     home.file.".openpeon/config.json".source = jsonFormat.generate "peon-ping-config" cfg.settings;
 
-    # Install sound packs via activation script (only if packs specified)
-    home.activation.peonPacksInstall = lib.mkIf (cfg.installPacks != [ ]) (
-      lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-        $DRY_RUN_CMD ${cfg.package}/bin/peon packs install ${lib.concatStringsSep "," cfg.installPacks}
-      ''
-    );
+    # Install sound packs directly from og-packs repository
+    home.file.".openpeon/packs" = lib.mkIf (cfg.installPacks != [ ]) {
+      source = pkgs.runCommand "peon-packs" { } ''
+        set -euo pipefail
+        mkdir -p $out
+        ${lib.concatMapStringsSep "\n" (packName: ''
+          if [ -d "${ogPacksSrc}/og-packs-${ogPacksVersion}/${packName}" ]; then
+            cp -r "${ogPacksSrc}/og-packs-${ogPacksVersion}/${packName}" $out/
+          else
+            echo "Error: Pack '${packName}' not found in og-packs" >&2
+            exit 1
+          fi
+        '') cfg.installPacks}
+      '';
+    };
 
     # Shell completions
     programs.zsh.initExtra = mkIf cfg.enableZshIntegration ''

@@ -56,7 +56,9 @@
             chmod +x "$share/scripts/"*.sh 2>/dev/null || true
 
             # Runtime data
-            cp config.json VERSION "$share/"
+            # Do not copy config.json
+            # This is a state (managed by user) or through Home Manager
+            cp VERSION "$share/"
             cp -r trainer "$share/trainer"
             mkdir -p "$share/docs"
             cp docs/peon-icon.png "$share/docs/"
@@ -65,7 +67,7 @@
             mkdir -p "$share/mcp"
             cp mcp/peon-mcp.js mcp/package.json "$share/mcp/"
 
-            # Skills + adapters (for reference; not executed by Nix)
+            # Skills + adapters
             cp -r skills "$share/skills"
             cp -r adapters "$share/adapters"
 

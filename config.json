@@ -17,6 +17,15 @@
   "silent_window_seconds": 0,
   "session_start_cooldown_seconds": 30,
   "suppress_subagent_complete": false,
+  "subagent_categories": {
+    "session.start": false,
+    "task.acknowledge": false,
+    "task.complete": false,
+    "task.error": false,
+    "input.required": false,
+    "resource.limit": false,
+    "user.spam": false
+  },
   "no_rc": false,
   "pack_rotation": [],
   "pack_rotation_mode": "random",

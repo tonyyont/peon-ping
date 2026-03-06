@@ -2696,6 +2696,12 @@ for c in ['session.start','task.acknowledge','task.complete','task.error','input
     default = False if c in default_off else True
     cat_enabled[c] = str(cats.get(c, default)).lower() == 'true'
 
+# Subagent categories: independent toggles, default all off
+sub_cats = cfg.get('subagent_categories', {})
+sub_cat_enabled = {}
+for c in ['session.start','task.acknowledge','task.complete','task.error','input.required','resource.limit','user.spam']:
+    sub_cat_enabled[c] = str(sub_cats.get(c, False)).lower() == 'true'
+
 # --- Parse event JSON from stdin ---
 event_data = json.load(sys.stdin)
 raw_event = event_data.get('hook_event_name', '')
@@ -3160,7 +3166,10 @@ elif category:
         notify = ''
 
 # --- Check if category is enabled ---
-if category and not cat_enabled.get(category, True):
+# Use subagent_categories for subagent events (subagentStop or known subagent session)
+is_subagent = raw_event == 'subagentStop' or session_id in state.get('subagent_sessions', {})
+effective_cats = sub_cat_enabled if is_subagent else cat_enabled
+if category and not effective_cats.get(category, True):
     category = ''
 
 # --- Pick sound (skip if no category or paused) ---

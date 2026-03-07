@@ -2,7 +2,7 @@
 
 > Game character voice lines + visual overlay notifications when your AI coding agent needs attention.
 
-peon-ping plays voice lines and shows bold on-screen overlay banners from Warcraft, StarCraft, Portal, Zelda, and 90+ other games when your AI coding agent finishes a task, needs permission, or hits an error. Works with Claude Code, Amp, GitHub Copilot, Cursor, OpenCode, Codex, Kiro, Kimi Code, Windsurf, and any MCP-compatible AI agent.
+peon-ping plays voice lines and shows bold on-screen overlay banners from Warcraft, StarCraft, Portal, Zelda, and 90+ other games when your AI coding agent finishes a task, needs permission, or hits an error. Works with Claude Code, Amp, GitHub Copilot, Cursor, OpenCode, Codex, Kiro, Kimi Code, Windsurf, DeepAgents, and any MCP-compatible AI agent.
 
 ## Links
 
@@ -77,6 +77,7 @@ MCP resources: `peon-ping://catalog`, `peon-ping://pack/{name}`
 - Google Antigravity
 - OpenClaw (via adapters/openclaw.sh — call with any CESP category or Claude Code event name)
 - Rovo Dev CLI (Atlassian — adapter for on_complete, on_error, on_tool_permission events)
+- DeepAgents (adapter — translates deepagents-cli events to CESP JSON)
 
 All adapters have native Windows PowerShell (.ps1) versions alongside the bash (.sh) originals. Filesystem watchers (Amp, Antigravity, Kimi) use .NET FileSystemWatcher on Windows instead of fswatch/inotifywait. The Windows installer (install.ps1) copies adapter scripts to ~/.claude/hooks/peon-ping/adapters/.
 

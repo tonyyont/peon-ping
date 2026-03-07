@@ -3077,7 +3077,13 @@ if not project and cwd:
 if not project and cwd:
     project = cwd.rsplit('/', 1)[-1]
 if not project:
-    project = 'claude'
+    # Codex adapter can emit empty/root cwd when launched outside a workspace.
+    # Keep labels agent-specific instead of falling back to "claude".
+    _bundle = os.environ.get('__CFBundleIdentifier', '')
+    if str(session_source).lower() == 'codex' or str(session_id).startswith('codex-') or _bundle == 'com.openai.codex':
+        project = 'codex'
+    else:
+        project = 'claude'
 project = re.sub(r'[^a-zA-Z0-9 ._-]', '', project)
 
 # --- Event routing ---

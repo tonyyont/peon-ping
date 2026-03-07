@@ -567,6 +567,19 @@ JSON
   [ "$PEON_EXIT" -eq 0 ]
 }
 
+@test "empty cwd falls back to 'codex' for codex sessions" {
+  /usr/bin/python3 -c "
+import json
+cfg = json.load(open('$TEST_DIR/config.json'))
+cfg['notification_style'] = 'standard'
+json.dump(cfg, open('$TEST_DIR/config.json', 'w'))
+"
+  run_peon '{"hook_event_name":"Stop","cwd":"","session_id":"codex-123","source":"codex","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  [ -f "$TEST_DIR/terminal_notifier.log" ]
+  grep -q "codex" "$TEST_DIR/terminal_notifier.log"
+}
+
 @test "state session_names overrides project name (set via /peon-ping-rename)" {
   /usr/bin/python3 -c "
 import json

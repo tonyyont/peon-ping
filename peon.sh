@@ -2202,7 +2202,7 @@ print('service=' + mn.get('service', ''))
       python3 -c "
 import json
 try:
-    cfg = json.load(open('$CONFIG_PY'))
+    cfg = json.load(open('$GLOBAL_CONFIG_PY'))
 except Exception:
     cfg = {}
 print('peon-ping: ssh audio mode ' + cfg.get('ssh_audio_mode', 'relay'))
@@ -2215,7 +2215,7 @@ print('peon-ping: ssh audio mode ' + cfg.get('ssh_audio_mode', 'relay'))
     fi
     python3 -c "
 import json
-config_path = '$CONFIG_PY'
+config_path = '$GLOBAL_CONFIG_PY'
 mode = '$SSH_MODE_ARG'
 try:
     cfg = json.load(open(config_path))

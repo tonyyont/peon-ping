@@ -795,6 +795,38 @@ JSON
   [[ "$output" == *"active"* ]]
 }
 
+@test "status shows OpenAI Codex as detected when ~/.codex exists but adapter is not configured" {
+  FAKE_HOME="$(mktemp -d)"
+  mkdir -p "$FAKE_HOME/.codex"
+  cat > "$FAKE_HOME/.codex/config.toml" <<'TOML'
+model = "gpt-5"
+notify = ["/bin/bash", "/tmp/not-codex.sh"]
+TOML
+
+  run env HOME="$FAKE_HOME" bash "$PEON_SH" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"OpenAI Codex"* ]]
+  [[ "$output" == *"detected (not set up)"* ]]
+
+  rm -rf "$FAKE_HOME"
+}
+
+@test "status shows OpenAI Codex as installed when ~/.codex notify uses codex adapter" {
+  FAKE_HOME="$(mktemp -d)"
+  mkdir -p "$FAKE_HOME/.codex"
+  cat > "$FAKE_HOME/.codex/config.toml" <<'TOML'
+model = "gpt-5"
+notify = ["/bin/bash", "/some/path/adapters/codex.sh"]
+TOML
+
+  run env HOME="$FAKE_HOME" bash "$PEON_SH" status
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"[x] OpenAI Codex"* ]]
+  [[ "$output" == *"(installed)"* ]]
+
+  rm -rf "$FAKE_HOME"
+}
+
 @test "paused file suppresses sound on SessionStart" {
   touch "$TEST_DIR/.paused"
   run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"s1","permission_mode":"default"}'
@@ -3617,4 +3649,3 @@ json.dump(c, open('$TEST_DIR/config.json', 'w'))
   sound=$(afplay_sound)
   [[ "$sound" == *"/packs/sc_kerrigan/sounds/"* ]]
 }
-

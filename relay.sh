@@ -399,7 +399,7 @@ def send_notification_on_host(title, message, color="red"):
     notify_script = os.path.join(PEON_DIR, "scripts", "notify.sh")
     if os.path.isfile(notify_script):
         config = load_config()
-        icon_path = os.path.join(PEON_DIR, "docs", "peon-icon.png")
+        icon_path = ""  # let notify.sh resolve pack icon via _resolve_pack_icon()
         env = os.environ.copy()
         env["PEON_PLATFORM"] = HOST_PLATFORM
         env["PEON_NOTIF_STYLE"] = config.get("notification_style", "overlay")

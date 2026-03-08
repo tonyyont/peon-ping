@@ -321,6 +321,7 @@ print(len(seen))
     draw_progress "$PACK_INDEX" "$TOTAL_PACKS" "$pack" 0 "$SOUND_COUNT" 0
 
     while read -r sfile; do
+      sfile="${sfile%$'\r'}"  # strip Windows CRLF trailing CR (Python on Windows outputs \r\n)
       if ! is_safe_filename "$sfile"; then
         echo "  Warning: skipped unsafe filename in $pack: $sfile" >&2
         continue
@@ -382,6 +383,7 @@ for cat in m.get('categories', {}).values():
             seen.add(rel)
             print(rel)
 " | while read -r sfile; do
+      sfile="${sfile%$'\r'}"  # strip Windows CRLF trailing CR (Python on Windows outputs \r\n)
       if ! is_safe_filename "$sfile"; then
         echo "  Warning: skipped unsafe filename in $pack: $sfile" >&2
         continue

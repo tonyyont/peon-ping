@@ -135,6 +135,7 @@ detect_platform() {
 PLATFORM=$(detect_platform)
 
 # MSYS2/MinGW: Windows Python can't read /c/... paths — convert to C:/... via cygpath
+# Also set PYTHONUTF8=1 to avoid cp932/cp1252 codec errors when settings.json contains Unicode
 py_path() {
   if [ "$PLATFORM" = "msys2" ]; then
     cygpath -m "$1"
@@ -142,6 +143,9 @@ py_path() {
     printf '%s' "$1"
   fi
 }
+if [ "$PLATFORM" = "msys2" ]; then
+  export PYTHONUTF8=1
+fi
 
 # --- Detect update vs fresh install ---
 UPDATING=false
@@ -400,6 +404,7 @@ else
   mkdir -p "$INSTALL_DIR/scripts"
   curl -fsSL "$REPO_BASE/scripts/hook-handle-use.sh" -o "$INSTALL_DIR/scripts/hook-handle-use.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/hook-handle-use.ps1" -o "$INSTALL_DIR/scripts/hook-handle-use.ps1" 2>/dev/null || true
+  curl -fsSL "$REPO_BASE/scripts/win-play.ps1" -o "$INSTALL_DIR/scripts/win-play.ps1" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/hook-handle-rename.sh" -o "$INSTALL_DIR/scripts/hook-handle-rename.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/pack-download.sh" -o "$INSTALL_DIR/scripts/pack-download.sh" 2>/dev/null || true
   curl -fsSL "$REPO_BASE/scripts/mac-overlay.js" -o "$INSTALL_DIR/scripts/mac-overlay.js" 2>/dev/null || true

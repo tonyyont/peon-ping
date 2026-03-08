@@ -141,7 +141,9 @@ GLOBAL_CONFIG="$PEON_DIR/config.json"
 STATE="$PEON_DIR/.state.json"
 
 # MSYS2/MinGW: Windows Python can't read /c/... paths — convert to C:/... via cygpath
+# Also set PYTHONUTF8=1 to avoid cp932/cp1252 codec errors when settings.json contains Unicode
 if [ "$PLATFORM" = "msys2" ]; then
+  export PYTHONUTF8=1
   CONFIG_PY="$(cygpath -m "$CONFIG")"
   GLOBAL_CONFIG_PY="$(cygpath -m "$GLOBAL_CONFIG")"
   STATE_PY="$(cygpath -m "$STATE")"

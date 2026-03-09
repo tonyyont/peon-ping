@@ -190,8 +190,9 @@ case "$PEON_PLATFORM" in
         local subtitle="${PEON_MSG_SUBTITLE:-}"
         local dismiss_secs="${PEON_NOTIF_DISMISS:-4}"
         local notif_position="${PEON_NOTIF_POSITION:-top-center}"
-        # argv[5]=bundle_id, argv[6]=ide_pid, argv[7]=session_tty, argv[8]=subtitle, argv[9]=position
-        osascript -l JavaScript "$overlay_script" "$msg" "$color" "$local_icon_arg" "$slot" "$dismiss_secs" "$bundle_id" "$ide_pid" "$session_tty" "$subtitle" "$notif_position" >/dev/null 2>&1 &
+        local notify_type="${PEON_NOTIFY_TYPE:-}"
+        # argv[5]=bundle_id, argv[6]=ide_pid, argv[7]=session_tty, argv[8]=subtitle, argv[9]=position, argv[10]=notify_type
+        osascript -l JavaScript "$overlay_script" "$msg" "$color" "$local_icon_arg" "$slot" "$dismiss_secs" "$bundle_id" "$ide_pid" "$session_tty" "$subtitle" "$notif_position" "$notify_type" >/dev/null 2>&1 &
         local _overlay_pid=$!
         # Shell-level watchdog: kill if JXA terminate timer doesn't fire (macOS regression)
         local _max_wait

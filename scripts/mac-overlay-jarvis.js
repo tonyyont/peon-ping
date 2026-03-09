@@ -14,8 +14,9 @@ function run(argv) {
   if (isNaN(dismiss)) dismiss = 5;
   var bundleId   = argv[5] || '';
   var idePid     = parseInt(argv[6], 10) || 0;
-  var sessionTty = argv[7] || '';  // TTY of the Claude session (for window focus)
-  var subtitle   = argv[8] || '';  // Context subtitle (e.g. tool info, last message)
+  var sessionTty  = argv[7] || '';  // TTY of the Claude session (for window focus)
+  var subtitle    = argv[8] || '';  // Context subtitle (e.g. tool info, last message)
+  var notifType   = argv[10] || ''; // Semantic type: complete|permission|limit|idle|question
 
   var accentR = 0.0, accentG = 0.75, accentB = 1.0;
   switch (color) {
@@ -25,10 +26,19 @@ function run(argv) {
     case 'blue':   accentR = 0.0;  accentG = 0.75; accentB = 1.0;  break;
   }
 
-  var typeText = 'INPUT REQUIRED';
-  if (color === 'red') typeText = 'LIMIT REACHED';
-  if (color === 'yellow') typeText = 'LIMIT REACHED';
-  if (color === 'green') typeText = 'TASK COMPLETE';
+  var typeText;
+  switch (notifType) {
+    case 'complete':   typeText = 'TASK COMPLETE';   break;
+    case 'permission': typeText = 'APPROVAL NEEDED'; break;
+    case 'limit':      typeText = 'LIMIT REACHED';   break;
+    case 'idle':       typeText = 'STANDING BY';     break;
+    case 'question':   typeText = 'INPUT REQUIRED';  break;
+    default:
+      // Fallback for relay.sh and other callers that don't set notifType
+      if (color === 'blue')   typeText = 'TASK COMPLETE';
+      else if (color === 'red' || color === 'yellow') typeText = 'LIMIT REACHED';
+      else                    typeText = 'INPUT REQUIRED';
+  }
 
   var circleSize = 300;
   var padding = 20;

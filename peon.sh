@@ -575,6 +575,7 @@ send_notification() {
         _resolve_session_tty
       fi
       export PEON_MSG_SUBTITLE="${MSG_SUBTITLE:-}"
+      export PEON_NOTIFY_TYPE="${NOTIFY_TYPE:-}"
       bash "$notify_script" "$msg" "$title" "$color" "$icon_path"
       ;;
     devcontainer|ssh)
@@ -3505,6 +3506,14 @@ print('STATUS=' + q(status))
 print('MARKER=' + q(marker))
 print('NOTIFY=' + q(notify))
 print('NOTIFY_COLOR=' + q(notify_color))
+_notify_type = ''
+if event == 'Stop': _notify_type = 'complete'
+elif event == 'PermissionRequest': _notify_type = 'permission'
+elif event == 'PreCompact': _notify_type = 'limit'
+elif event == 'Notification':
+    if ntype == 'idle_prompt': _notify_type = 'idle'
+    elif ntype == 'elicitation_dialog': _notify_type = 'question'
+print('NOTIFY_TYPE=' + q(_notify_type))
 print('MSG=' + q(msg))
 print('MSG_SUBTITLE=' + q(msg_subtitle))
 print('DESKTOP_NOTIF=' + ('true' if desktop_notif else 'false'))

@@ -2367,6 +2367,8 @@ display_name = manifest.get('display_name', active_pack)
 print('PACK_DISPLAY=' + repr(display_name))
 print('VOLUME=' + str(volume))
 print('USE_SOUND_EFFECTS_DEVICE=' + str(use_sound_effects_device).lower())
+print('LINUX_AUDIO_PLAYER=' + repr(cfg.get('linux_audio_player', '')))                                                                                                                                                                    
+print('PEON_SSH_AUDIO_MODE=' + repr(cfg.get('ssh_audio_mode', 'relay')))
 
 sounds = cat_data['sounds']
 for i, s in enumerate(sounds):
@@ -2395,6 +2397,8 @@ for i, s in enumerate(sounds):
     USE_SOUND_EFFECTS_DEVICE=$(echo "$PREVIEW_OUTPUT" | grep '^USE_SOUND_EFFECTS_DEVICE=' | head -1 | cut -d= -f2)
     USE_SOUND_EFFECTS_DEVICE="${USE_SOUND_EFFECTS_DEVICE:-true}"
     PACK_DISPLAY=$(echo "$PREVIEW_OUTPUT" | grep '^PACK_DISPLAY=' | head -1 | sed "s/^PACK_DISPLAY=//;s/^'//;s/'$//")
+    LINUX_AUDIO_PLAYER=$(echo "$PREVIEW_OUTPUT" | grep '^LINUX_AUDIO_PLAYER=' | head -1 | sed "s/^LINUX_AUDIO_PLAYER=//;s/^'//;s/'$//")                                                                                              
+    PEON_SSH_AUDIO_MODE=$(echo "$PREVIEW_OUTPUT" | grep '^PEON_SSH_AUDIO_MODE=' | head -1 | sed "s/^PEON_SSH_AUDIO_MODE=//;s/^'//;s/'$//")
 
     echo "peon-ping: previewing [$PREVIEW_CAT] from $PACK_DISPLAY"
     echo ""

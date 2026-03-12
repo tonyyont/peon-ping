@@ -1,3 +1,8 @@
+## Unreleased
+
+### Added
+- **Nix/Home Manager: custom pack sources** — `installPacks` now accepts both simple strings (for og-packs) and attribute sets with `name` and `src` fields to install packs from any source. The `src` field accepts any Nix fetcher result (e.g., `pkgs.fetchFromGitHub`), enabling community packs from the [openpeon.com registry](https://openpeon.com/) that aren't in og-packs while maintaining full reproducibility.
+
 ## v2.15.1 (2026-03-09)
 
 ### Fixed

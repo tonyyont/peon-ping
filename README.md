@@ -148,7 +148,23 @@ in {
       };
     };
 
-    installPacks = [ "peon" "glados" "sc_kerrigan" ];
+    # Install packs from og-packs (simple string notation)
+    # and custom sources (attrset with name + src)
+    installPacks = [
+      "peon"
+      "glados"
+      "sc_kerrigan"
+      # Custom pack from GitHub (openpeon.com registry)
+      {
+        name = "mr_meeseeks";
+        src = pkgs.fetchFromGitHub {
+          owner = "kasperhendriks";
+          repo = "openpeon-mrmeeseeks";
+          rev = "main";  # or use a commit hash for reproducibility
+          sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        };
+      }
+    ];
     enableZshIntegration = true;
   };
 
@@ -163,7 +179,24 @@ in {
 }
 ```
 
-Note: peon-ping Home Manager module will not setup your IDE hooks to avoid conflicting updates. You must define these hooks yourself (see example above) depending on how you usually manage your IDE configuration.
+**Sound pack installation**: The `installPacks` option supports two formats:
+- **Simple strings** (e.g., `"peon"`, `"glados"`) — fetched from the [og-packs](https://github.com/PeonPing/og-packs) repository
+- **Custom sources** — attrset with `name` and `src` fields, where `src` can be any Nix fetcher result (e.g., `pkgs.fetchFromGitHub`)
+
+For packs listed on [openpeon.com](https://openpeon.com/), find the GitHub repository link and use `pkgs.fetchFromGitHub`:
+```nix
+{
+  name = "pack_name";
+  src = pkgs.fetchFromGitHub {
+    owner = "github-owner";
+    repo = "repo-name";
+    rev = "main";  # or a commit hash/tag
+    sha256 = "";   # Leave empty first, Nix will tell you the correct hash
+  };
+}
+```
+
+**IDE hooks**: peon-ping Home Manager module will not setup your IDE hooks to avoid conflicting updates. You must define these hooks yourself (see example above) depending on how you usually manage your IDE configuration.
 - peon-ping provide adapters scripts for various IDE such as `cursor.sh` - see [`adapters/`](https://github.com/PeonPing/peon-ping/tree/main/adapters)
 - You need to call them as your hook such command like
   ```sh

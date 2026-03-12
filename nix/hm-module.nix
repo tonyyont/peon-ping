@@ -60,13 +60,47 @@ in
     };
 
     installPacks = mkOption {
-      type = types.listOf types.str;
+      type = types.listOf (types.either types.str (types.submodule {
+        options = {
+          name = mkOption {
+            type = types.str;
+            description = "Name of the sound pack (used as directory name in ~/.openpeon/packs/)";
+          };
+          src = mkOption {
+            type = types.either types.package types.path;
+            description = ''
+              Source for the pack. Can be:
+              - A path to a local directory
+              - Result of fetchFromGitHub, fetchzip, etc.
+            '';
+          };
+        };
+      }));
       default = [ ];
       description = ''
-        List of sound pack names to install automatically - fetched from the og-packs repository.
-        Common packs: peon, glados, sc_kerrigan, murloc, witcher
+        List of sound packs to install automatically.
+
+        Can be either:
+        - A string (pack name from og-packs): "peon", "glados", etc.
+        - An attrset with name and src fields for custom packs
+
+        Common og-packs: peon, glados, sc_kerrigan, murloc, witcher
       '';
-      example = literalExpression ''[ "peon" "glados" ]'';
+      example = literalExpression ''
+        [
+          "peon"
+          "glados"
+          {
+            name = "mr_meeseeks";
+            src = pkgs.fetchFromGitHub {
+              owner = "kasperhendriks";
+              repo = "openpeon-mrmeeseeks";
+              rev = "main";  # or a commit hash
+              sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+            };
+          }
+        ]
+      '';
     };
 
     enableZshIntegration = mkOption {
@@ -107,11 +141,17 @@ in
     # Overrides any config.json that may be present in the package.
     home.file.".openpeon/config.json".source = jsonFormat.generate "peon-ping-config" cfg.settings;
 
-    # Install sound packs directly from og-packs repository
-    home.file.".openpeon/packs" = lib.mkIf (cfg.installPacks != [ ]) {
+    # Install sound packs from og-packs and/or custom sources
+    home.file.".openpeon/packs" = lib.mkIf (cfg.installPacks != [ ]) (let
+      # Separate string pack names (og-packs) from custom pack specs
+      ogPacks = lib.filter (p: lib.isString p) cfg.installPacks;
+      customPacks = lib.filter (p: lib.isAttrs p) cfg.installPacks;
+    in {
       source = pkgs.runCommand "peon-packs" { } ''
         set -euo pipefail
         mkdir -p $out
+
+        # Install packs from og-packs
         ${lib.concatMapStringsSep "\n" (packName: ''
           if [ -d "${ogPacksSrc}/og-packs-${ogPacksVersion}/${packName}" ]; then
             cp -r "${ogPacksSrc}/og-packs-${ogPacksVersion}/${packName}" $out/
@@ -119,9 +159,19 @@ in
             echo "Error: Pack '${packName}' not found in og-packs" >&2
             exit 1
           fi
-        '') cfg.installPacks}
+        '') ogPacks}
+
+        # Install custom packs
+        ${lib.concatMapStringsSep "\n" (pack: ''
+          if [ -d "${pack.src}" ]; then
+            cp -r "${pack.src}" "$out/${pack.name}"
+          else
+            echo "Error: Custom pack '${pack.name}' source not found" >&2
+            exit 1
+          fi
+        '') customPacks}
       '';
-    };
+    });
 
     # Shell completions
     programs.zsh.initExtra = mkIf cfg.enableZshIntegration ''

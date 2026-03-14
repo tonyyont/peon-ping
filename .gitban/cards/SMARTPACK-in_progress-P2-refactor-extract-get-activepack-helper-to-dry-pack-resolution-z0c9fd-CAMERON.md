@@ -196,3 +196,13 @@ $pack = Get-ActivePack $cfg
 - `tests/adapters-windows.Tests.ps1` — 6 insertions, 4 deletions
 
 **Log:** `.gitban/agents/executor/logs/SMARTPACK-z0c9fd-executor-1.jsonl`
+
+## Review Log
+
+| Review | Verdict | Commit | Date | Report |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | APPROVAL | 0a67a57 | 2026-03-14 | `.gitban/agents/reviewer/inbox/SMARTPACK-z0c9fd-reviewer-1.md` |
+
+**Routing:**
+- Executor: `.gitban/agents/executor/inbox/SMARTPACK-z0c9fd-executor-1.md` -- close-out instructions
+- Planner: `.gitban/agents/planner/inbox/SMARTPACK-z0c9fd-planner-1.md` -- 1 BACKLOG card (2 items: atomic state I/O hardening)

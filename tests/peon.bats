@@ -3662,3 +3662,34 @@ json.dump(c, open('$TEST_DIR/config.json', 'w'))
   sound=$(afplay_sound)
   [[ "$sound" == *"/packs/sc_kerrigan/sounds/"* ]]
 }
+
+# ============================================================
+# Atomic state I/O
+# ============================================================
+
+@test "corrupted state.json does not crash the hook - continues with defaults" {
+  # Write corrupted JSON to state file
+  echo '{invalid json garbage!!!' > "$TEST_DIR/.state.json"
+  run_peon '{"hook_event_name":"SessionStart","cwd":"/tmp/myproject","session_id":"corrupt1","permission_mode":"default"}'
+  [ "$PEON_EXIT" -eq 0 ]
+  afplay_was_called
+  sound=$(afplay_sound)
+  [[ "$sound" == *"/packs/peon/sounds/Hello"* ]]
+  # State file should now be valid JSON (written atomically after event)
+  /usr/bin/python3 -c "import json; json.load(open('$TEST_DIR/.state.json'))"
+}
+
+@test "concurrent Stop events produce valid JSON state" {
+  # Fire multiple Stop events rapidly to test atomic write safety
+  for i in 1 2 3 4 5; do
+    echo '{"hook_event_name":"Stop","cwd":"/tmp/proj","session_id":"concurrent'$i'","permission_mode":"default"}' \
+      | bash "$PEON_SH" 2>/dev/null &
+  done
+  wait
+  # State file must be valid JSON after all concurrent writes
+  /usr/bin/python3 -c "
+import json
+state = json.load(open('$TEST_DIR/.state.json'))
+assert isinstance(state, dict), 'State should be a dict'
+"
+}

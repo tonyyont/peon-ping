@@ -558,20 +558,48 @@ function ConvertTo-Hashtable {
     return $obj
 }
 
-# Read state
-$state = @{}
-try {
-    if (Test-Path $StatePath) {
-        $raw = Get-Content $StatePath -Raw
-        if ($raw -and $raw.Trim().Length -gt 0) {
-            $stateObj = $raw | ConvertFrom-Json
-            $converted = ConvertTo-Hashtable $stateObj
-            if ($converted -is [hashtable]) { $state = $converted }
+# --- Atomic state I/O helpers ---
+function Write-StateAtomic {
+    param([hashtable]$State, [string]$Path)
+    $dir = Split-Path $Path -Parent
+    if ($dir -and -not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    $tmp = "$Path.$PID.tmp"
+    try {
+        $State | ConvertTo-Json -Depth 3 | Set-Content $tmp -Encoding UTF8
+        # [System.IO.File]::Move with overwrite requires .NET Core (PS 7+).
+        # For PS 5.1 compat: delete target then move (atomic on NTFS same-volume).
+        if (Test-Path $Path) { [System.IO.File]::Delete($Path) }
+        [System.IO.File]::Move($tmp, $Path)
+    } catch {
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+    }
+}
+
+function Read-StateWithRetry {
+    param([string]$Path)
+    $delays = @(50, 100, 200)
+    for ($i = 0; $i -le $delays.Count; $i++) {
+        try {
+            if (Test-Path $Path) {
+                $raw = Get-Content $Path -Raw
+                if ($raw -and $raw.Trim().Length -gt 0) {
+                    $stateObj = $raw | ConvertFrom-Json
+                    $converted = ConvertTo-Hashtable $stateObj
+                    if ($converted -is [hashtable]) { return $converted }
+                }
+            }
+            return @{}
+        } catch {
+            if ($i -lt $delays.Count) {
+                Start-Sleep -Milliseconds $delays[$i]
+            }
         }
     }
-} catch {
-    $state = @{}
+    return @{}
 }
+
+# Read state
+$state = Read-StateWithRetry -Path $StatePath
 
 # --- Session cleanup: expire old sessions ---
 $now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
@@ -666,7 +694,7 @@ switch ($hookEvent) {
 
 # Save state
 try {
-    $state | ConvertTo-Json -Depth 3 | Set-Content $StatePath -Encoding UTF8
+    Write-StateAtomic -State $state -Path $StatePath
 } catch {}
 
 if (-not $category) { exit 0 }
@@ -783,7 +811,7 @@ if ($iconCandidate) {
 # Save last played
 $state[$lastKey] = $soundFile
 try {
-    $state | ConvertTo-Json -Depth 3 | Set-Content $StatePath -Encoding UTF8
+    Write-StateAtomic -State $state -Path $StatePath
 } catch {}
 
 # --- Play the sound inline ---

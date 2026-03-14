@@ -2568,10 +2568,34 @@ json.dump(cfg, open(config_path, 'w'), indent=2)
         exit 0 ;;
       status)
         python3 -c "
-import json, datetime, sys
+import json, datetime, sys, os, time, tempfile
 
 config_path = '$CONFIG_PY'
 state_path = '$STATE_PY'
+
+def _write_state(st, path, indent=None):
+    d = os.path.dirname(path) or '.'
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(st, f, indent=indent)
+        os.replace(tmp, path)
+    except Exception:
+        try: os.unlink(tmp)
+        except OSError: pass
+        raise
+
+def _read_state(path):
+    delays = [0.05, 0.1, 0.2]
+    for attempt in range(len(delays) + 1):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except Exception:
+            if attempt < len(delays):
+                time.sleep(delays[attempt])
+    return {}
 
 try:
     cfg = json.load(open(config_path))
@@ -2586,10 +2610,7 @@ if not trainer_cfg.get('enabled', False):
 
 exercises = trainer_cfg.get('exercises', {'pushups': 300, 'squats': 300})
 
-try:
-    state = json.load(open(state_path))
-except Exception:
-    state = {}
+state = _read_state(state_path)
 
 trainer_state = state.get('trainer', {})
 today = datetime.date.today().isoformat()
@@ -2598,7 +2619,7 @@ today = datetime.date.today().isoformat()
 if trainer_state.get('date', '') != today:
     trainer_state = {'date': today, 'reps': {k: 0 for k in exercises}, 'last_reminder_ts': 0}
     state['trainer'] = trainer_state
-    json.dump(state, open(state_path, 'w'), indent=2)
+    _write_state(state, state_path, indent=2)
 
 reps = trainer_state.get('reps', {})
 
@@ -2630,12 +2651,36 @@ for ex, goal in exercises.items():
           ''|*[!0-9]*) echo "peon-ping: count must be a number" >&2; exit 1 ;;
         esac
         python3 -c "
-import json, datetime, sys
+import json, datetime, sys, os, time, tempfile
 
 config_path = '$CONFIG_PY'
 state_path = '$STATE_PY'
 count = int('$COUNT')
 exercise = '$EXERCISE'
+
+def _write_state(st, path, indent=None):
+    d = os.path.dirname(path) or '.'
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(st, f, indent=indent)
+        os.replace(tmp, path)
+    except Exception:
+        try: os.unlink(tmp)
+        except OSError: pass
+        raise
+
+def _read_state(path):
+    delays = [0.05, 0.1, 0.2]
+    for attempt in range(len(delays) + 1):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except Exception:
+            if attempt < len(delays):
+                time.sleep(delays[attempt])
+    return {}
 
 try:
     cfg = json.load(open(config_path))
@@ -2654,10 +2699,7 @@ if exercise not in exercises:
 
 goal = exercises[exercise]
 
-try:
-    state = json.load(open(state_path))
-except Exception:
-    state = {}
+state = _read_state(state_path)
 
 trainer_state = state.get('trainer', {})
 today = datetime.date.today().isoformat()
@@ -2671,7 +2713,7 @@ reps[exercise] = reps.get(exercise, 0) + count
 trainer_state['reps'] = reps
 trainer_state['date'] = today
 state['trainer'] = trainer_state
-json.dump(state, open(state_path, 'w'), indent=2)
+_write_state(state, state_path, indent=2)
 
 done = reps[exercise]
 pct = min(done / goal, 1.0) if goal > 0 else 0
@@ -2798,7 +2840,7 @@ _PEON_HOOK_TTY=$(_peon_walk_tty)
 # Consolidates 5 separate python3 invocations into one for ~120-200ms faster hook response.
 # Outputs shell variables consumed by the bash play/notify/title logic below.
 _PEON_PYOUT=$(python3 -c "
-import sys, json, os, re, random, time, shlex
+import sys, json, os, re, random, time, shlex, tempfile
 q = shlex.quote
 
 config_path = '$CONFIG_PY'
@@ -2808,6 +2850,35 @@ paused = '$PAUSED' == 'true'
 hook_tty = '$_PEON_HOOK_TTY'
 agent_modes = {'delegate'}
 state_dirty = False
+
+# --- Atomic state I/O helpers ---
+def write_state(st, path, indent=None):
+    \"\"\"Atomically write state dict to path via temp+rename.\"\"\"
+    d = os.path.dirname(path) or '.'
+    os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=d, suffix='.tmp')
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(st, f, indent=indent)
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+def read_state(path):
+    \"\"\"Read state dict from path with retry on transient failures.\"\"\"
+    delays = [0.05, 0.1, 0.2]
+    for attempt in range(len(delays) + 1):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except Exception:
+            if attempt < len(delays):
+                time.sleep(delays[attempt])
+    return {}
 
 # --- Load config ---
 try:
@@ -2871,10 +2942,7 @@ perm_mode = event_data.get('permission_mode', '')
 session_source = event_data.get('source', '')
 
 # --- Load state ---
-try:
-    state = json.load(open(state_file))
-except Exception:
-    state = {}
+state = read_state(state_file)
 
 # --- Agent detection ---
 agent_sessions = set(state.get('agent_sessions', []))
@@ -2883,8 +2951,7 @@ if perm_mode and perm_mode in agent_modes:
     state['agent_sessions'] = list(agent_sessions)
     state_dirty = True
     print('PEON_EXIT=true')
-    os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
-    json.dump(state, open(state_file, 'w'))
+    write_state(state, state_file)
     sys.exit(0)
 elif session_id in agent_sessions:
     print('PEON_EXIT=true')
@@ -3157,8 +3224,7 @@ elif event == 'Stop':
     category = 'task.complete'
     # Suppress completion sound/notification for known sub-agent sessions
     if suppress_subagent_complete and session_id in state.get('subagent_sessions', {}):
-        os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
-        json.dump(state, open(state_file, 'w'))
+        write_state(state, state_file)
         print('PEON_EXIT=true')
         sys.exit(0)
     silent = False
@@ -3208,8 +3274,7 @@ elif event == 'Notification':
 elif event == 'PermissionRequest':
     # Suppress permission sound/notification for known sub-agent sessions
     if suppress_subagent_complete and session_id in state.get('subagent_sessions', {}):
-        os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
-        json.dump(state, open(state_file, 'w'))
+        write_state(state, state_file)
         print('PEON_EXIT=true')
         sys.exit(0)
     category = 'input.required'
@@ -3238,8 +3303,7 @@ elif event == 'SubagentStart':
     # Record parent's pack so spawned subagent sessions inherit it, then stay silent
     state['pending_subagent_pack'] = dict(ts=time.time(), pack=active_pack)
     state_dirty = True
-    os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
-    json.dump(state, open(state_file, 'w'))
+    write_state(state, state_file)
     # Maintain parent's tab title while subagent runs (no sound)
     print('PROJECT=' + q(project or ''))
     print('STATUS=working')
@@ -3264,8 +3328,7 @@ elif event == 'SessionEnd':
     agent_sessions.discard(session_id)
     state['agent_sessions'] = list(agent_sessions)
     state_dirty = True
-    os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
-    json.dump(state, open(state_file, 'w'))
+    write_state(state, state_file)
     print('EVENT=' + q(event))
     print('PEON_EXIT=true')
     sys.exit(0)
@@ -3440,8 +3503,7 @@ if trainer_cfg.get('enabled', False):
 
 # --- Write state once ---
 if state_dirty:
-    os.makedirs(os.path.dirname(state_file) or '.', exist_ok=True)
-    json.dump(state, open(state_file, 'w'))
+    write_state(state, state_file)
     # --- Relay state push ---
     if state.get('last_active'):
         import urllib.request as _ureq

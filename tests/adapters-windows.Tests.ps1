@@ -402,7 +402,7 @@ Describe "Category C: OpenCode Installer" {
 
     It "creates default config.json" {
         $script:opencodeContent | Should -Match 'config\.json'
-        $script:opencodeContent | Should -Match 'default_pack'
+        $script:opencodeContent | Should -Match 'active_pack'
     }
 
     It "installs default pack from registry" {
@@ -434,7 +434,7 @@ Describe "Category C: Kilo Installer" {
 
     It "creates default config.json" {
         $script:kiloContent | Should -Match 'config\.json'
-        $script:kiloContent | Should -Match 'default_pack'
+        $script:kiloContent | Should -Match 'active_pack'
     }
 
     It "installs default pack from registry" {
@@ -627,8 +627,8 @@ Describe "hook-handle-use.ps1" {
         $script:hhuContent | Should -Match 'Test-Path \$packPath'
     }
 
-    It "sets pack_rotation_mode to session_override" {
-        $script:hhuContent | Should -Match 'pack_rotation_mode.*session_override'
+    It "sets pack_rotation_mode to agentskill" {
+        $script:hhuContent | Should -Match 'pack_rotation_mode.*agentskill'
     }
 
     It "writes session_packs with timestamp to .state.json" {
@@ -1182,6 +1182,10 @@ Describe "path_rules: CLI Commands - Structural" {
     }
 }
 
+# ============================================================
+# path_rules: CLI Commands - Functional (B6: true E2E tests)
+# ============================================================
+
 Describe "path_rules: CLI Commands - Functional" {
     BeforeAll {
         # Extract the embedded hook script from install.ps1 (the here-string between @' and '@)
@@ -1306,223 +1310,5 @@ Describe "path_rules: CLI Commands - Functional" {
         & powershell.exe -NoProfile -Command "& '$script:peonPs1' --packs bind peon --pattern '*/proj/*' 2>&1" | Out-Null
         $result = & powershell.exe -NoProfile -Command "& '$script:peonPs1' --status 2>&1"
         ($result -join "`n") | Should -Match "path rules: 1 configured"
-    }
-}
-
-# ============================================================
-# Embedded peon.ps1: Update-PeonConfig shared helper
-# ============================================================
-
-Describe "Embedded peon.ps1 Update-PeonConfig Helper" {
-    BeforeAll {
-        $script:installContent = Get-Content (Join-Path $script:RepoRoot "install.ps1") -Raw
-        if ($script:installContent -match "(?s)\`$hookScript = @'(.+?)'@") {
-            $script:peonHookContent = $matches[1]
-        } else {
-            $script:peonHookContent = ""
-        }
-    }
-
-    It "defines Update-PeonConfig function" {
-        $script:peonHookContent | Should -Match 'function Update-PeonConfig'
-    }
-
-    It "accepts Path and Mutator parameters" {
-        $script:peonHookContent | Should -Match 'Update-PeonConfig[\s\S]*?\[string\]\$Path'
-        $script:peonHookContent | Should -Match 'Update-PeonConfig[\s\S]*?\[scriptblock\]\$Mutator'
-    }
-
-    It "reads JSON, applies mutator, and writes back" {
-        $script:peonHookContent | Should -Match 'ConvertFrom-Json'
-        $script:peonHookContent | Should -Match 'ConvertTo-Json'
-        $script:peonHookContent | Should -Match '& \$Mutator'
-    }
-}
-
-# ============================================================
-# Embedded peon.ps1: bind/unbind/bindings subcommands
-# ============================================================
-
-Describe "Embedded peon.ps1 Bind/Unbind/Bindings CLI" {
-    BeforeAll {
-        $script:installContent = Get-Content (Join-Path $script:RepoRoot "install.ps1") -Raw
-        if ($script:installContent -match "(?s)\`$hookScript = @'(.+?)'@") {
-            $script:peonHookContent = $matches[1]
-        } else {
-            $script:peonHookContent = ""
-        }
-    }
-
-    It "has bind subcommand under --packs" {
-        $script:peonHookContent | Should -Match '"bind"\s*\{'
-    }
-
-    It "has unbind subcommand under --packs" {
-        $script:peonHookContent | Should -Match '"unbind"\s*\{'
-    }
-
-    It "has bindings subcommand under --packs" {
-        $script:peonHookContent | Should -Match '"bindings"\s*\{'
-    }
-
-    It "bind validates pack name exists" {
-        $script:peonHookContent | Should -Match 'packArg -notin \$available'
-    }
-
-    It "bind supports --install flag" {
-        $script:peonHookContent | Should -Match '"--install"'
-        $script:peonHookContent | Should -Match 'bindInstall'
-    }
-
-    It "bind supports --pattern flag" {
-        $script:peonHookContent | Should -Match '"--pattern"'
-        $script:peonHookContent | Should -Match 'bindPattern'
-    }
-
-    It "bind defaults pattern to current directory" {
-        $script:peonHookContent | Should -Match 'Get-Location.*Path'
-    }
-
-    It "bind uses Update-PeonConfig to write path_rules" {
-        $script:peonHookContent | Should -Match 'Update-PeonConfig.*-Path.*ConfigPath.*-Mutator'
-    }
-
-    It "unbind uses Update-PeonConfig to remove path_rules" {
-        $script:peonHookContent | Should -Match 'Update-PeonConfig.*-Path.*ConfigPath'
-    }
-
-    It "bindings reads path_rules from config" {
-        $script:peonHookContent | Should -Match 'path_rules'
-    }
-
-    It "--install downloads manifest and sounds with progress" {
-        $script:peonHookContent | Should -Match 'openpeon\.json'
-        $script:peonHookContent | Should -Match 'downloading\.\.\.'
-    }
-
-    It "help text mentions bind/unbind/bindings" {
-        $script:peonHookContent | Should -Match '--packs bind'
-        $script:peonHookContent | Should -Match '--packs unbind'
-        $script:peonHookContent | Should -Match '--packs bindings'
-    }
-
-    It "accepts ExtraArgs for additional flags" {
-        $script:peonHookContent | Should -Match 'ExtraArgs'
-    }
-}
-
-# ============================================================
-# Embedded peon.ps1: bind --install end-to-end test
-# ============================================================
-
-Describe "Embedded peon.ps1 Bind --install E2E" {
-    BeforeAll {
-        $script:installContent = Get-Content (Join-Path $script:RepoRoot "install.ps1") -Raw
-        if ($script:installContent -match "(?s)\`$hookScript = @'(.+?)'@") {
-            $script:peonHookContent = $matches[1]
-        } else {
-            $script:peonHookContent = ""
-        }
-        # Set up temp directory with config and empty packs dir
-        $script:tmpDir = Join-Path ([System.IO.Path]::GetTempPath()) "peon-bind-test-$([guid]::NewGuid().ToString('N').Substring(0,8))"
-        New-Item -ItemType Directory -Path $script:tmpDir -Force | Out-Null
-        New-Item -ItemType Directory -Path (Join-Path $script:tmpDir "packs") -Force | Out-Null
-        # Create a mock pack with manifest and sounds
-        $mockPackDir = Join-Path $script:tmpDir "packs\testpack"
-        $mockSoundsDir = Join-Path $mockPackDir "sounds"
-        New-Item -ItemType Directory -Path $mockSoundsDir -Force | Out-Null
-        # Create a minimal openpeon.json manifest
-        $manifest = @{
-            name = "testpack"
-            categories = @{
-                "session.start" = @{
-                    sounds = @(
-                        @{ file = "sounds/hello.wav"; label = "Hello" }
-                    )
-                }
-            }
-        }
-        $manifest | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $mockPackDir "openpeon.json") -Encoding UTF8
-        # Create a dummy sound file
-        [byte[]]$dummyBytes = 0..15
-        [System.IO.File]::WriteAllBytes((Join-Path $mockSoundsDir "hello.wav"), $dummyBytes)
-        # Create config with empty path_rules
-        $config = @{
-            active_pack = "testpack"
-            enabled = $true
-            volume = 0.5
-            path_rules = @()
-        }
-        $script:configPath = Join-Path $script:tmpDir "config.json"
-        $config | ConvertTo-Json -Depth 5 | Set-Content $script:configPath -Encoding UTF8
-    }
-
-    AfterAll {
-        if (Test-Path $script:tmpDir) {
-            Remove-Item $script:tmpDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-
-    It "bind adds a path_rule entry to config" {
-        # Extract and run Update-PeonConfig + bind logic in isolation
-        # We simulate the bind by directly calling Update-PeonConfig
-        $configPath = $script:configPath
-        $bindPattern = $script:tmpDir
-        $packArg = "testpack"
-
-        # Define Update-PeonConfig in this scope
-        function Update-PeonConfig {
-            param([string]$Path, [scriptblock]$Mutator)
-            $cfg = Get-Content $Path -Raw | ConvertFrom-Json
-            $cfg = & $Mutator $cfg
-            $cfg | ConvertTo-Json -Depth 10 | Set-Content $Path -Encoding UTF8
-            return $cfg
-        }
-
-        Update-PeonConfig -Path $configPath -Mutator {
-            param($c)
-            $rules = if ($c.path_rules) { @($c.path_rules) } else { @() }
-            $found = $false
-            for ($j = 0; $j -lt $rules.Count; $j++) {
-                if ($rules[$j].pattern -eq $bindPattern) {
-                    $rules[$j].pack = $packArg
-                    $found = $true
-                    break
-                }
-            }
-            if (-not $found) {
-                $rules += [PSCustomObject]@{ pattern = $bindPattern; pack = $packArg }
-            }
-            $c.path_rules = $rules
-            return $c
-        }.GetNewClosure() | Out-Null
-
-        $result = Get-Content $configPath -Raw | ConvertFrom-Json
-        $result.path_rules | Should -Not -BeNullOrEmpty
-        $result.path_rules[0].pack | Should -Be "testpack"
-    }
-
-    It "unbind removes a path_rule entry from config" {
-        $configPath = $script:configPath
-        $target = $script:tmpDir
-
-        function Update-PeonConfig {
-            param([string]$Path, [scriptblock]$Mutator)
-            $cfg = Get-Content $Path -Raw | ConvertFrom-Json
-            $cfg = & $Mutator $cfg
-            $cfg | ConvertTo-Json -Depth 10 | Set-Content $Path -Encoding UTF8
-            return $cfg
-        }
-
-        Update-PeonConfig -Path $configPath -Mutator {
-            param($c)
-            $rules = if ($c.path_rules) { @($c.path_rules) } else { @() }
-            $newRules = @($rules | Where-Object { $_.pattern -ne $target })
-            $c.path_rules = $newRules
-            return $c
-        }.GetNewClosure() | Out-Null
-
-        $result = Get-Content $configPath -Raw | ConvertFrom-Json
-        $result.path_rules.Count | Should -Be 0
     }
 }

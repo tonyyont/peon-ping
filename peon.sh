@@ -944,6 +944,18 @@ print(f'peon-ping: default pack: {active} ({display_name})')
 print(f'peon-ping: {pack_count} pack(s) installed')
 rules = c.get('path_rules', [])
 if rules:
+    import fnmatch as _fnm
+    _cwd = os.getcwd()
+    _matched = None
+    for _r in rules:
+        _pat = _r.get('pattern', '')
+        if _cwd and _fnm.fnmatch(_cwd, _pat):
+            _matched = _r
+            break
+    if _matched:
+        _mp = _matched.get('pattern', '')
+        _mk = _matched.get('pack', '')
+        print(f'peon-ping: path rule: {_mp} -> {_mk}')
     print(f'peon-ping: path rules: {len(rules)} configured')
 
 # --- IDE detection ---
